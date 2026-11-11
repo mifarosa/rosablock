@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Rosablock",
+    "slug": "rosablock",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#1A1416",
+    "ios": { "supportsTablet": true },
+    "android": { "backgroundColor": "#1A1416" }
+  }
+}
