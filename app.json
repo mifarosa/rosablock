@@ -6,7 +6,15 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1A1416",
-    "ios": { "supportsTablet": true },
-    "android": { "backgroundColor": "#1A1416" }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mifarosa.rosablock",
+      "buildNumber": "1"
+    },
+    "android": {
+      "backgroundColor": "#1A1416",
+      "package": "com.mifarosa.rosablock",
+      "versionCode": 1
+    }
   }
 }
