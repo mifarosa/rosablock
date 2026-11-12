@@ -19,7 +19,7 @@ certificates and provisioning profile live in EAS, so no `.p12` or `.mobileprovi
    npx eas-cli credentials -p ios      # or: npx eas-cli build -p ios --profile production
    ```
    For automatic TestFlight upload, also add an App Store Connect API key there, and put the
-   Apple ID from step 2 into `eas.json` -> `submit.production.ios.ascAppId`.
+   Apple ID from step 2 is already set in `eas.json` -> `submit.production.ios.ascAppId`.
 5. **GitHub secret:** expo.dev -> Access tokens -> Create token. Then repo -> Settings -> Secrets
    and variables -> Actions -> New repository secret, name `EXPO_TOKEN`. Never commit the token.
 
