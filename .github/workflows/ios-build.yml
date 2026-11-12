@@ -1,0 +1,55 @@
+name: iOS build
+
+# Builds the iOS app on a GitHub macOS runner with `eas build --local`. EAS keeps the signing
+# certificates and the provisioning profile, so none is needed here; only the build itself runs on
+# this machine, so it does not use the builds of the EAS cloud. The repository is public, so the
+# macOS minutes are free.
+#
+# Run it by hand: Actions -> iOS build -> Run workflow. Needs the secret EXPO_TOKEN and a one-time
+# local setup (see RELEASE.md). Only people who can write to the repository can run it.
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: Upload to TestFlight afterwards (needs an App Store Connect API key in EAS)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build
+        run: eas build --platform ios --profile production --local --non-interactive --output "$RUNNER_TEMP/rosablock.ipa"
+      # Kept for a day, so a failed upload does not cost the build; submit it later by hand with
+      # `eas submit --platform ios --path rosablock.ipa`.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rosablock-ios
+          path: ${{ runner.temp }}/rosablock.ipa
+          retention-days: 1
+      - name: Upload to TestFlight
+        if: ${{ inputs.submit }}
+        run: eas submit --platform ios --profile production --path "$RUNNER_TEMP/rosablock.ipa" --non-interactive

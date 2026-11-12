@@ -7,9 +7,12 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#1A1416",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.mifarosa.rosablock",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "backgroundColor": "#1A1416",
