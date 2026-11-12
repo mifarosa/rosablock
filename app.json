@@ -18,6 +18,12 @@
       "backgroundColor": "#1A1416",
       "package": "com.mifarosa.rosablock",
       "versionCode": 1
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6c5b2244-d22d-42b6-8819-682705cfedfd"
+      }
+    },
+    "owner": "mifarosa"
   }
 }
