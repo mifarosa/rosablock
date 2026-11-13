@@ -44,6 +44,8 @@ export interface GameState {
   level: number;
   elapsedMs: number;
   status: GameStatus;
+  /** Rows that are full and being animated away; empty when nothing is clearing. */
+  clearingRows: number[];
 }
 
 // ---------------------------------------------------------------------------
@@ -144,6 +146,7 @@ export function createGame(mode: GameMode): GameState {
     level: 1,
     elapsedMs: 0,
     status: 'playing',
+    clearingRows: [],
   };
 }
 
@@ -163,7 +166,13 @@ function spawnNext(state: GameState): GameState {
   return { ...base, piece: null, status: 'over' };
 }
 
-/** Locks a piece into the grid, clears lines, updates score and spawns the next piece. */
+/** How long full rows are shown flashing before they collapse. */
+export const CLEAR_ANIM_MS = 300;
+
+/**
+ * Locks a piece into the grid. If rows became full they are only marked (`clearingRows`) so the
+ * screen can flash them; `finishClear` then removes them and brings the next piece.
+ */
 function lockPiece(state: GameState, piece: ActivePiece, bonus: number): GameState {
   const grid: Grid = state.grid.map((row) => [...row]);
   const matrix = getMatrix(piece.type, piece.rotation);
@@ -173,11 +182,32 @@ function lockPiece(state: GameState, piece: ActivePiece, bonus: number): GameSta
     }
   }
 
-  const result = clearLines(grid);
+  const fullRows: number[] = [];
+  grid.forEach((row, index) => {
+    if (row.every((cell) => cell !== null)) fullRows.push(index);
+  });
+
+  const locked: GameState = { ...state, grid, piece: null, score: state.score + bonus };
+  if (fullRows.length === 0) return spawnNext(locked);
+  return { ...locked, clearingRows: fullRows };
+}
+
+/** Second half of a line clear: removes the flashing rows, scores them and spawns the next piece. */
+export function finishClear(state: GameState): GameState {
+  if (state.clearingRows.length === 0) return state;
+
+  const result = clearLines(state.grid);
   const lines = state.lines + result.cleared;
-  const score = state.score + bonus + LINE_SCORES[result.cleared]! * state.level;
+  const score = state.score + LINE_SCORES[result.cleared]! * state.level;
   const level = levelFor(state.mode, lines);
-  const updated: GameState = { ...state, grid: result.grid, lines, score, level, piece: null };
+  const updated: GameState = {
+    ...state,
+    grid: result.grid,
+    lines,
+    score,
+    level,
+    clearingRows: [],
+  };
 
   const sprintDone = state.mode === 'sprint' && lines >= SPRINT_TARGET_LINES;
   const marathonDone = state.mode === 'marathon' && lines >= MARATHON_TARGET_LINES;
@@ -238,7 +268,9 @@ export function addTime(state: GameState, deltaMs: number): GameState {
   if (state.status !== 'playing' || deltaMs <= 0) return state;
   const elapsedMs = state.elapsedMs + deltaMs;
   if (state.mode === 'ultra' && elapsedMs >= ULTRA_DURATION_MS) {
-    return { ...state, elapsedMs: ULTRA_DURATION_MS, status: 'finished' };
+    // Rows that were still flashing when time ran out still count.
+    const settled = finishClear({ ...state, elapsedMs });
+    return { ...settled, elapsedMs: ULTRA_DURATION_MS, status: 'finished' };
   }
   return { ...state, elapsedMs };
 }
@@ -297,6 +329,14 @@ export function useTetris(mode: GameMode): TetrisApi {
     const id = setInterval(() => commit(stepDown), gravityMs);
     return () => clearInterval(id);
   }, [status, gravityMs, commit]);
+
+  // Line clear: after the flash, collapse the rows and continue.
+  const clearing = state.clearingRows.length > 0;
+  useEffect(() => {
+    if (!clearing || status !== 'playing') return undefined;
+    const id = setTimeout(() => commit(finishClear), CLEAR_ANIM_MS);
+    return () => clearTimeout(id);
+  }, [clearing, status, commit]);
 
   // Clock: drives the timer display and ends Ultra when time is up.
   useEffect(() => {

@@ -1,14 +1,16 @@
-import React, { memo, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 import { COLORS, PIECE_COLORS } from '../constants/colors';
 import { BOARD_COLS, BOARD_ROWS, getMatrix, type TetrominoType } from '../constants/tetrominos';
-import type { ActivePiece, Grid } from '../hooks/useTetris';
+import { CLEAR_ANIM_MS, type ActivePiece, type Grid } from '../hooks/useTetris';
 
 interface BoardProps {
   grid: Grid;
   piece: ActivePiece | null;
   ghostRow: number | null;
   cellSize: number;
+  /** Full rows that are flashing before they collapse. */
+  clearingRows: number[];
 }
 
 interface CellProps {
@@ -72,14 +74,63 @@ function buildDisplay(grid: Grid, piece: ActivePiece | null, ghostRow: number | 
   return display;
 }
 
-function Board({ grid, piece, ghostRow, cellSize }: BoardProps) {
-  const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
+/** White flash over the cleared rows: bright, a quick dip, bright again, then fade out. */
+function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const rest = Math.max(60, CLEAR_ANIM_MS - 170);
+    Animated.sequence([
+      Animated.timing(opacity, { toValue: 0.95, duration: 50, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0.3, duration: 60, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: rest, useNativeDriver: true }),
+    ]).start();
+  }, [opacity]);
 
   return (
-    <View
+    <>
+      {rows.map((row) => (
+        <Animated.View
+          key={row}
+          pointerEvents="none"
+          style={[
+            styles.flash,
+            { top: row * cellSize, height: cellSize, width: cellSize * BOARD_COLS, opacity },
+          ]}
+        />
+      ))}
+    </>
+  );
+}
+
+function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
+  const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
+
+  // Three or more rows at once make the whole board shake; a tetris shakes harder.
+  const shake = useRef(new Animated.Value(0)).current;
+  const clearCount = clearingRows.length;
+  useEffect(() => {
+    if (clearCount < 3) return;
+    const a = clearCount >= 4 ? 9 : 5;
+    Animated.sequence([
+      Animated.timing(shake, { toValue: -a, duration: 40, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: a, duration: 55, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -a * 0.6, duration: 55, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: a * 0.4, duration: 50, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  }, [clearCount, shake]);
+
+  return (
+    <Animated.View
       style={[
         styles.board,
-        { width: cellSize * BOARD_COLS + 4, height: cellSize * BOARD_ROWS + 4 },
+        {
+          width: cellSize * BOARD_COLS + 4,
+          height: cellSize * BOARD_ROWS + 4,
+          transform: [{ translateX: shake }],
+        },
       ]}
     >
       {display.map((row, r) => (
@@ -89,7 +140,10 @@ function Board({ grid, piece, ghostRow, cellSize }: BoardProps) {
           ))}
         </View>
       ))}
-    </View>
+      {clearCount > 0 && (
+        <ClearFlash key={clearingRows.join(',')} rows={clearingRows} cellSize={cellSize} />
+      )}
+    </Animated.View>
   );
 }
 
@@ -104,6 +158,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   row: { flexDirection: 'row' },
+  flash: { position: 'absolute', left: 0, backgroundColor: COLORS.textPrimary },
   cell: { borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
   empty: { backgroundColor: COLORS.boardBg },
   filled: { borderWidth: 1, borderColor: 'rgba(247, 232, 236, 0.22)', borderRadius: 2 },

@@ -9,8 +9,10 @@ import { formatTime } from '../utils/format';
 interface HomeScreenProps {
   highScores: HighScores;
   controlMode: ControlMode;
+  hapticsEnabled: boolean;
   onSelectMode: (mode: GameMode) => void;
   onChangeControlMode: (mode: ControlMode) => void;
+  onChangeHaptics: (enabled: boolean) => void;
 }
 
 const CONTROL_OPTIONS: { id: ControlMode; title: string; hint: string }[] = [
@@ -27,8 +29,10 @@ function scoreLabel(mode: GameMode, scores: HighScores): string {
 export default function HomeScreen({
   highScores,
   controlMode,
+  hapticsEnabled,
   onSelectMode,
   onChangeControlMode,
+  onChangeHaptics,
 }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -73,9 +77,31 @@ export default function HomeScreen({
             );
           })}
         </View>
-        <Text style={styles.segmentHint}>
+        <Text style={[styles.segmentHint, { marginBottom: 12 }]}>
           {CONTROL_OPTIONS.find((o) => o.id === controlMode)?.hint}
         </Text>
+
+        <View style={styles.segment}>
+          {[
+            { value: true, title: 'Titreşim açık' },
+            { value: false, title: 'Titreşim kapalı' },
+          ].map((opt) => {
+            const active = opt.value === hapticsEnabled;
+            return (
+              <Pressable
+                key={opt.title}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => onChangeHaptics(opt.value)}
+                style={[styles.segmentItem, active && styles.segmentItemActive]}
+              >
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                  {opt.title}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Text style={styles.section}>EN İYİLER</Text>
         <View style={styles.scoreTable}>

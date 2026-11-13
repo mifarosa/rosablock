@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from './src/constants/colors';
 import type { GameMode } from './src/constants/modes';
+import { setHapticsEnabled } from './src/utils/haptics';
 import GameScreen from './src/screens/GameScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import {
@@ -12,9 +13,11 @@ import {
   EMPTY_HIGH_SCORES,
   loadControlMode,
   loadControlSide,
+  loadHapticsEnabled,
   loadHighScores,
   saveControlMode,
   saveControlSide,
+  saveHapticsEnabled,
   type ControlMode,
   type ControlSide,
   type HighScores,
@@ -25,6 +28,7 @@ export default function App() {
   const [highScores, setHighScores] = useState<HighScores>(EMPTY_HIGH_SCORES);
   const [controlMode, setControlMode] = useState<ControlMode>(DEFAULT_CONTROL_MODE);
   const [controlSide, setControlSide] = useState<ControlSide>(DEFAULT_CONTROL_SIDE);
+  const [hapticsEnabled, setHapticsState] = useState(true);
 
   useEffect(() => {
     let alive = true;
@@ -36,6 +40,11 @@ export default function App() {
     });
     void loadControlSide().then((value) => {
       if (alive) setControlSide(value);
+    });
+    void loadHapticsEnabled().then((value) => {
+      if (!alive) return;
+      setHapticsState(value);
+      setHapticsEnabled(value);
     });
     return () => {
       alive = false;
@@ -53,6 +62,12 @@ export default function App() {
     void saveControlSide(value);
   }, []);
 
+  const handleChangeHaptics = useCallback((value: boolean) => {
+    setHapticsState(value);
+    setHapticsEnabled(value);
+    void saveHapticsEnabled(value);
+  }, []);
+
   return (
     <SafeAreaProvider>
       <View style={styles.root}>
@@ -61,8 +76,10 @@ export default function App() {
           <HomeScreen
             highScores={highScores}
             controlMode={controlMode}
+            hapticsEnabled={hapticsEnabled}
             onSelectMode={setMode}
             onChangeControlMode={handleChangeControlMode}
+            onChangeHaptics={handleChangeHaptics}
           />
         ) : (
           <GameScreen

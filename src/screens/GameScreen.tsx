@@ -11,6 +11,7 @@ import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { useTetris } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { hitsGhost } from '../utils/ghostHit';
+import { dropHaptic, finishHaptic, gameOverHaptic, lineClearHaptic } from '../utils/haptics';
 import {
   saveResult,
   type ControlMode,
@@ -69,6 +70,23 @@ export default function GameScreen({
 
   const ended = state.status === 'over' || state.status === 'finished';
 
+  // Haptics: rows cleared (scaled by how many) and the end of the game.
+  const clearingRows = state.clearingRows;
+  useEffect(() => {
+    if (clearingRows.length > 0) lineClearHaptic(clearingRows.length);
+  }, [clearingRows]);
+  useEffect(() => {
+    if (state.status === 'over') gameOverHaptic();
+    else if (state.status === 'finished') finishHaptic();
+  }, [state.status]);
+
+  // A hard drop of at least a couple of rows gets a solid thud.
+  const { hardDrop: engineHardDrop, ghostRow } = game;
+  const hardDrop = () => {
+    if (state.piece && ghostRow !== null && ghostRow - state.piece.row >= 2) dropHaptic();
+    engineHardDrop();
+  };
+
   // Persist the result exactly once per game.
   useEffect(() => {
     if (!ended) {
@@ -107,14 +125,20 @@ export default function GameScreen({
   const handleTap = (x: number, y: number) => {
     const boardLeft = (width - boardWidth) / 2;
     if (hitsGhost(x, y, state.piece, game.ghostRow, cellSize, boardLeft, SECTION_GAP)) {
-      game.hardDrop();
+      hardDrop();
     } else {
       game.rotateCW();
     }
   };
 
   const board = (
-    <Board grid={state.grid} piece={state.piece} ghostRow={game.ghostRow} cellSize={cellSize} />
+    <Board
+      grid={state.grid}
+      piece={state.piece}
+      ghostRow={game.ghostRow}
+      cellSize={cellSize}
+      clearingRows={clearingRows}
+    />
   );
 
   const status = (layout: 'bar' | 'box', boxHeight: number) => (

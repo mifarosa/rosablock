@@ -132,3 +132,25 @@ export async function saveControlSide(side: ControlSide): Promise<void> {
     // Not persisting the preference is harmless.
   }
 }
+
+// ---------------------------------------------------------------------------
+// Haptics setting
+// ---------------------------------------------------------------------------
+
+const HAPTICS_KEY = 'rosablock:haptics:v1';
+
+export async function loadHapticsEnabled(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(HAPTICS_KEY)) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export async function saveHapticsEnabled(value: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(HAPTICS_KEY, value ? 'on' : 'off');
+  } catch {
+    // Not persisting the preference is harmless.
+  }
+}
