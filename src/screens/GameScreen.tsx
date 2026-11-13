@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Board from '../components/Board';
@@ -8,9 +8,10 @@ import ScoreBoard from '../components/ScoreBoard';
 import { COLORS } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
-import { useTetris } from '../hooks/useTetris';
+import { useTetris, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { hitsGhost } from '../utils/ghostHit';
+import { clearGame, isPristine, saveGame } from '../utils/saves';
 import { dropHaptic, finishHaptic, gameOverHaptic, lineClearHaptic } from '../utils/haptics';
 import {
   saveResult,
@@ -21,6 +22,8 @@ import {
 
 interface GameScreenProps {
   mode: GameMode;
+  /** A saved game to continue (it opens paused), or null for a fresh game. */
+  initialState: GameState | null;
   controlMode: ControlMode;
   controlSide: ControlSide;
   onChangeControlSide: (side: ControlSide) => void;
@@ -38,13 +41,14 @@ const BOARD_BORDER = 2;
 
 export default function GameScreen({
   mode,
+  initialState,
   controlMode,
   controlSide,
   onChangeControlSide,
   onExit,
   onScoresChanged,
 }: GameScreenProps) {
-  const game = useTetris(mode);
+  const game = useTetris(mode, initialState);
   const { state } = game;
   const { width, height } = useWindowDimensions();
   const [isNewBest, setIsNewBest] = useState(false);
@@ -69,6 +73,27 @@ export default function GameScreen({
   const boardWidth = cellSize * BOARD_COLS + BOARD_BORDER * 2;
 
   const ended = state.status === 'over' || state.status === 'finished';
+
+  // Autosave: whenever a piece lands or lines clear, and when the game pauses (that includes
+  // going to the background). A finished or still-untouched game leaves no save behind.
+  const latest = useRef(state);
+  latest.current = state;
+  const persist = useCallback(async () => {
+    const s = latest.current;
+    if (s.status === 'over' || s.status === 'finished' || isPristine(s)) {
+      await clearGame(s.mode);
+    } else {
+      await saveGame(s);
+    }
+  }, []);
+  useEffect(() => {
+    void persist();
+  }, [state.grid, state.status, persist]);
+
+  const exitToMenu = async () => {
+    await persist();
+    onExit();
+  };
 
   // Haptics: rows cleared (scaled by how many) and the end of the game.
   const clearingRows = state.clearingRows;
@@ -175,7 +200,7 @@ export default function GameScreen({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Menüye dön"
-            onPress={onExit}
+            onPress={() => void exitToMenu()}
             style={styles.headerButton}
           >
             <Text style={styles.headerButtonText}>‹ Menü</Text>
@@ -259,7 +284,7 @@ export default function GameScreen({
               <DialogButton label="Tekrar Oyna" onPress={restart} />
             )}
             {paused && <DialogButton label="Yeniden Başla" onPress={restart} secondary />}
-            <DialogButton label="Ana Menü" onPress={onExit} secondary />
+            <DialogButton label="Ana Menü" onPress={() => void exitToMenu()} secondary />
           </View>
         </View>
       )}

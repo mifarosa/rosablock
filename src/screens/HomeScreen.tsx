@@ -3,11 +3,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
+import type { SavedGames } from '../utils/saves';
 import type { ControlMode, HighScores } from '../utils/storage';
 import { formatTime } from '../utils/format';
 
 interface HomeScreenProps {
   highScores: HighScores;
+  savedGames: SavedGames;
   controlMode: ControlMode;
   hapticsEnabled: boolean;
   onSelectMode: (mode: GameMode) => void;
@@ -28,6 +30,7 @@ function scoreLabel(mode: GameMode, scores: HighScores): string {
 
 export default function HomeScreen({
   highScores,
+  savedGames,
   controlMode,
   hapticsEnabled,
   onSelectMode,
@@ -55,6 +58,11 @@ export default function HomeScreen({
               <Text style={styles.cardSubtitle}>{mode.subtitle}</Text>
             </View>
             <Text style={styles.cardDescription}>{mode.description}</Text>
+            {savedGames[mode.id] && (
+              <Text style={styles.cardSaved}>
+                ▶ Devam: {savedGames[mode.id]!.score} puan · {savedGames[mode.id]!.lines} satır
+              </Text>
+            )}
           </Pressable>
         ))}
 
@@ -155,6 +163,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   cardTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
   cardSubtitle: { color: COLORS.textSecondary, fontSize: 12 },
+  cardSaved: { color: COLORS.textPrimary, marginTop: 8, fontSize: 13, fontWeight: '700' },
   cardDescription: { color: COLORS.textSecondary, marginTop: 6, fontSize: 14 },
   segment: {
     flexDirection: 'row',

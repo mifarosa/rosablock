@@ -301,8 +301,8 @@ export interface TetrisApi {
   restart: () => void;
 }
 
-export function useTetris(mode: GameMode): TetrisApi {
-  const [state, setState] = useState<GameState>(() => createGame(mode));
+export function useTetris(mode: GameMode, initial: GameState | null = null): TetrisApi {
+  const [state, setState] = useState<GameState>(() => initial ?? createGame(mode));
   // The ref is the source of truth so timers and rapid touch events never see stale state.
   const stateRef = useRef<GameState>(state);
   const lastTsRef = useRef<number>(Date.now());
