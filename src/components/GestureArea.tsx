@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { PanResponder, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  PanResponder,
+  StyleSheet,
+  View,
+  type HostInstance,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { HOLD_DELAY_MS, SwipeTracker, type SwipeActions } from '../utils/swipeTracker';
 
 interface GestureAreaProps {
@@ -7,7 +14,8 @@ interface GestureAreaProps {
   onLeft: () => void;
   onRight: () => void;
   onSoftDrop: () => void;
-  onRotate: () => void;
+  /** A tap, with its position relative to this area's top-left corner. */
+  onTap: (x: number, y: number) => void;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }
@@ -20,13 +28,13 @@ export default function GestureArea({
   onLeft,
   onRight,
   onSoftDrop,
-  onRotate,
+  onTap,
   style,
   children,
 }: GestureAreaProps) {
   // Latest callbacks live in a ref: the PanResponder is created once and must never go stale.
-  const handlers = useRef({ onLeft, onRight, onSoftDrop, onRotate });
-  handlers.current = { onLeft, onRight, onSoftDrop, onRotate };
+  const handlers = useRef({ onLeft, onRight, onSoftDrop, onTap });
+  handlers.current = { onLeft, onRight, onSoftDrop, onTap };
 
   const tracker = useRef<SwipeTracker | null>(null);
   if (tracker.current === null) {
@@ -34,12 +42,14 @@ export default function GestureArea({
       left: () => handlers.current.onLeft(),
       right: () => handlers.current.onRight(),
       down: () => handlers.current.onSoftDrop(),
-      rotate: () => handlers.current.onRotate(),
     };
     tracker.current = new SwipeTracker(cellSize, actions);
   }
   tracker.current.cellSize = cellSize;
 
+  const viewRef = useRef<HostInstance>(null);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const touchStart = useRef({ pageX: 0, pageY: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -54,9 +64,14 @@ export default function GestureArea({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (evt) => {
         const t = tracker.current!;
         t.start(Date.now());
+        touchStart.current = { pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY };
+        // The area's position on screen, to turn the tap's page coordinates into local ones.
+        viewRef.current?.measureInWindow((x, y) => {
+          origin.current = { x, y };
+        });
         clearTimers();
         holdTimer.current = setTimeout(() => {
           if (t.beginHold()) {
@@ -69,8 +84,12 @@ export default function GestureArea({
       },
       onPanResponderMove: (_evt, g) => tracker.current!.move(g.dx, g.dy),
       onPanResponderRelease: () => {
-        tracker.current!.end(Date.now());
+        const tap = tracker.current!.end(Date.now());
         clearTimers();
+        const o = origin.current;
+        if (tap && o) {
+          handlers.current.onTap(touchStart.current.pageX - o.x, touchStart.current.pageY - o.y);
+        }
       },
       onPanResponderTerminate: clearTimers,
     }),
@@ -79,7 +98,7 @@ export default function GestureArea({
   useEffect(() => clearTimers, [clearTimers]);
 
   return (
-    <View style={[styles.area, style]} {...panResponder.panHandlers}>
+    <View ref={viewRef} collapsable={false} style={[styles.area, style]} {...panResponder.panHandlers}>
       {children}
     </View>
   );

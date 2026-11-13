@@ -1,5 +1,5 @@
 // Pure gesture logic for the buttonless mode (no React, easy to test).
-//   tap                -> rotate
+//   tap                -> reported to the caller (rotate, or hard drop when it hits the ghost)
 //   horizontal drag    -> move one column per `cellSize * STEP_X_FACTOR` travelled
 //   downward drag      -> soft drop one row per `cellSize` travelled
 //   press and hold     -> keeps soft dropping (the component drives it via `beginHold`)
@@ -8,7 +8,6 @@ export interface SwipeActions {
   left: () => void;
   right: () => void;
   down: () => void;
-  rotate: () => void;
 }
 
 /** Finger travel (px) before a touch stops being a tap. */
@@ -74,10 +73,8 @@ export class SwipeTracker {
     if (dy < this.anchorY) this.anchorY = dy;
   }
 
-  /** Called on release. Fires rotate for a tap; returns whether it was a tap. */
+  /** Called on release. Returns true when the touch was a tap (short, still, not a hold). */
   end(now: number): boolean {
-    const tap = !this.moved && !this.holding && now - this.startTime < TAP_MAX_MS;
-    if (tap) this.actions.rotate();
-    return tap;
+    return !this.moved && !this.holding && now - this.startTime < TAP_MAX_MS;
   }
 }

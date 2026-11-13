@@ -14,8 +14,8 @@ interface HomeScreenProps {
 }
 
 const CONTROL_OPTIONS: { id: ControlMode; title: string; hint: string }[] = [
-  { id: 'gestures', title: 'Tuşsuz', hint: 'Dokun: döndür · kaydır: yana · basılı tut: aşağı' },
-  { id: 'buttons', title: 'Tuşlar', hint: 'Altta tek sıra tuş, tek elle oynanır' },
+  { id: 'gestures', title: 'Tuşsuz', hint: 'Dokun: döndür · gölgeye dokun: çat diye indir · kaydır: yana · basılı tut: aşağı' },
+  { id: 'buttons', title: 'Tuşlar', hint: 'Tuşlar bir yanda, durum kutusu diğer yanda. Oyunda ⇄ ile yer değiştirir' },
 ];
 
 function scoreLabel(mode: GameMode, scores: HighScores): string {

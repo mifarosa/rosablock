@@ -8,11 +8,15 @@ import GameScreen from './src/screens/GameScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import {
   DEFAULT_CONTROL_MODE,
+  DEFAULT_CONTROL_SIDE,
   EMPTY_HIGH_SCORES,
   loadControlMode,
+  loadControlSide,
   loadHighScores,
   saveControlMode,
+  saveControlSide,
   type ControlMode,
+  type ControlSide,
   type HighScores,
 } from './src/utils/storage';
 
@@ -20,6 +24,7 @@ export default function App() {
   const [mode, setMode] = useState<GameMode | null>(null); // null = home screen
   const [highScores, setHighScores] = useState<HighScores>(EMPTY_HIGH_SCORES);
   const [controlMode, setControlMode] = useState<ControlMode>(DEFAULT_CONTROL_MODE);
+  const [controlSide, setControlSide] = useState<ControlSide>(DEFAULT_CONTROL_SIDE);
 
   useEffect(() => {
     let alive = true;
@@ -28,6 +33,9 @@ export default function App() {
     });
     void loadControlMode().then((value) => {
       if (alive) setControlMode(value);
+    });
+    void loadControlSide().then((value) => {
+      if (alive) setControlSide(value);
     });
     return () => {
       alive = false;
@@ -38,6 +46,11 @@ export default function App() {
   const handleChangeControlMode = useCallback((value: ControlMode) => {
     setControlMode(value);
     void saveControlMode(value);
+  }, []);
+
+  const handleChangeControlSide = useCallback((value: ControlSide) => {
+    setControlSide(value);
+    void saveControlSide(value);
   }, []);
 
   return (
@@ -56,6 +69,8 @@ export default function App() {
             key={mode}
             mode={mode}
             controlMode={controlMode}
+            controlSide={controlSide}
+            onChangeControlSide={handleChangeControlSide}
             onExit={handleExit}
             onScoresChanged={setHighScores}
           />

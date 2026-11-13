@@ -109,3 +109,26 @@ export async function saveControlMode(mode: ControlMode): Promise<void> {
     // Not persisting the preference is harmless.
   }
 }
+
+/** Which side of the screen the buttons are on (the status box takes the other side). */
+export type ControlSide = 'left' | 'right';
+
+export const DEFAULT_CONTROL_SIDE: ControlSide = 'right';
+const SIDE_KEY = 'rosablock:side:v1';
+
+export async function loadControlSide(): Promise<ControlSide> {
+  try {
+    const value = await AsyncStorage.getItem(SIDE_KEY);
+    return value === 'left' || value === 'right' ? value : DEFAULT_CONTROL_SIDE;
+  } catch {
+    return DEFAULT_CONTROL_SIDE;
+  }
+}
+
+export async function saveControlSide(side: ControlSide): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SIDE_KEY, side);
+  } catch {
+    // Not persisting the preference is harmless.
+  }
+}

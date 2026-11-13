@@ -7,10 +7,12 @@ interface ControlsProps {
   onRight: () => void;
   onSoftDrop: () => void;
   onRotate: () => void;
+  height: number;
 }
 
 const REPEAT_DELAY_MS = 170;
 const REPEAT_INTERVAL_MS = 55;
+const GAP = 8;
 
 interface PadButtonProps {
   label: string;
@@ -53,7 +55,6 @@ const PadButton = memo(function PadButton({
       accessibilityLabel={accessibilityLabel}
       onPressIn={start}
       onPressOut={stop}
-      hitSlop={4}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       <Text style={styles.label}>{label}</Text>
@@ -61,14 +62,22 @@ const PadButton = memo(function PadButton({
   );
 });
 
-/** One row at the bottom: every button is reachable by one thumb. */
-function Controls({ onLeft, onRight, onSoftDrop, onRotate }: ControlsProps) {
+/**
+ * A compact 2x2 cluster meant for one thumb:
+ *   ↻  ▼
+ *   ◀  ▶
+ */
+function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsProps) {
   return (
-    <View style={styles.container}>
-      <PadButton label="◀" accessibilityLabel="Sola" onPress={onLeft} repeat />
-      <PadButton label="▼" accessibilityLabel="Aşağı" onPress={onSoftDrop} repeat />
-      <PadButton label="▶" accessibilityLabel="Sağa" onPress={onRight} repeat />
-      <PadButton label="↻" accessibilityLabel="Döndür" onPress={onRotate} />
+    <View style={[styles.cluster, { height }]}>
+      <View style={styles.row}>
+        <PadButton label="↻" accessibilityLabel="Döndür" onPress={onRotate} />
+        <PadButton label="▼" accessibilityLabel="Aşağı" onPress={onSoftDrop} repeat />
+      </View>
+      <View style={styles.row}>
+        <PadButton label="◀" accessibilityLabel="Sola" onPress={onLeft} repeat />
+        <PadButton label="▶" accessibilityLabel="Sağa" onPress={onRight} repeat />
+      </View>
     </View>
   );
 }
@@ -76,15 +85,11 @@ function Controls({ onLeft, onRight, onSoftDrop, onRotate }: ControlsProps) {
 export default memo(Controls);
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 12,
-  },
+  cluster: { gap: GAP },
+  row: { flex: 1, flexDirection: 'row', gap: GAP },
   button: {
     flex: 1,
-    height: 68,
-    borderRadius: 34,
+    borderRadius: 18,
     backgroundColor: COLORS.border,
     borderWidth: 2,
     borderColor: COLORS.textSecondary,

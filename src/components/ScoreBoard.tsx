@@ -17,10 +17,14 @@ interface ScoreBoardProps {
   level: number;
   elapsedMs: number;
   next: TetrominoType;
+  /** 'bar': one row of tiles. 'box': a two-column block that fits beside the buttons. */
+  layout: 'bar' | 'box';
+  height: number;
 }
 
 const PREVIEW_CELL = 12;
 const PREVIEW_ROWS = 2; // every piece fits in 2 rows once trimmed (I is 1 row)
+const TILE_GAP = 6;
 
 /** Next piece preview: the shape's bounding box is trimmed so it is always centered. */
 function NextPiece({ type }: { type: TetrominoType }) {
@@ -52,21 +56,14 @@ function NextPiece({ type }: { type: TetrominoType }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-    </View>
-  );
+interface Tile {
+  key: string;
+  label: string;
+  value?: string;
+  next?: TetrominoType;
 }
 
-/** Compact one-row HUD that sits above the board. */
-function ScoreBoard({ mode, score, lines, level, elapsedMs, next }: ScoreBoardProps) {
+function ScoreBoard({ mode, score, lines, level, elapsedMs, next, layout, height }: ScoreBoardProps) {
   let timeLabel = 'SÜRE';
   let timeValue = formatTime(elapsedMs);
   if (mode === 'ultra') {
@@ -78,44 +75,71 @@ function ScoreBoard({ mode, score, lines, level, elapsedMs, next }: ScoreBoardPr
   if (mode === 'sprint') linesValue = `${lines}/${SPRINT_TARGET_LINES}`;
   if (mode === 'marathon') linesValue = `${lines}/${MARATHON_TARGET_LINES}`;
 
+  const tiles: Tile[] = [
+    { key: 'next', label: 'SIRADAKİ', next },
+    { key: 'score', label: 'PUAN', value: String(score) },
+    { key: 'lines', label: 'SATIR', value: linesValue },
+  ];
+  if (mode !== 'zen') tiles.push({ key: 'level', label: 'SEVİYE', value: String(level) });
+  tiles.push({ key: 'time', label: timeLabel, value: timeValue });
+
+  const isBox = layout === 'box';
+  const rows = Math.ceil(tiles.length / 2);
+  const tileHeight = isBox ? (height - TILE_GAP * (rows - 1)) / rows : height;
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.stat, styles.nextStat]}>
-        <Text style={styles.statLabel}>SIRADAKİ</Text>
-        <NextPiece type={next} />
-      </View>
-      <Stat label="PUAN" value={String(score)} />
-      <Stat label="SATIR" value={linesValue} />
-      {mode !== 'zen' && <Stat label="SEVİYE" value={String(level)} />}
-      <Stat label={timeLabel} value={timeValue} />
+    <View style={[isBox ? styles.box : styles.bar, { height }]}>
+      {tiles.map((tile, i) => {
+        // In the box, an odd last tile spans the full width.
+        const spansRow = isBox && tiles.length % 2 === 1 && i === tiles.length - 1;
+        return (
+          <View
+            key={tile.key}
+            style={[
+              styles.tile,
+              { height: tileHeight },
+              isBox ? { width: spansRow ? '100%' : '48.5%' } : styles.barTile,
+            ]}
+          >
+            <Text style={styles.label} numberOfLines={1}>
+              {tile.label}
+            </Text>
+            {tile.next ? (
+              <NextPiece type={tile.next} />
+            ) : (
+              <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
+                {tile.value}
+              </Text>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 export default memo(ScoreBoard);
 
-export const SCOREBOARD_HEIGHT = 58;
-
 const styles = StyleSheet.create({
-  container: {
-    height: SCOREBOARD_HEIGHT,
+  bar: { flexDirection: 'row', gap: TILE_GAP, paddingHorizontal: 12 },
+  box: {
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: TILE_GAP,
   },
-  stat: {
-    flex: 1,
+  barTile: { flex: 1 },
+  tile: {
     backgroundColor: COLORS.boardBg,
     borderColor: COLORS.border,
     borderWidth: 2,
     borderRadius: 6,
-    paddingVertical: 5,
+    paddingVertical: 4,
     paddingHorizontal: 6,
     justifyContent: 'space-between',
   },
-  nextStat: { flex: 1.1, alignItems: 'flex-start' },
-  statLabel: { color: COLORS.textSecondary, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
-  statValue: {
+  label: { color: COLORS.textSecondary, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+  value: {
     color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: '700',

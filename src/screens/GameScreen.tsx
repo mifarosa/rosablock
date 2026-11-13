@@ -4,17 +4,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
 import GestureArea from '../components/GestureArea';
-import ScoreBoard, { SCOREBOARD_HEIGHT } from '../components/ScoreBoard';
+import ScoreBoard from '../components/ScoreBoard';
 import { COLORS } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { useTetris } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
-import { saveResult, type ControlMode, type HighScores } from '../utils/storage';
+import { hitsGhost } from '../utils/ghostHit';
+import {
+  saveResult,
+  type ControlMode,
+  type ControlSide,
+  type HighScores,
+} from '../utils/storage';
 
 interface GameScreenProps {
   mode: GameMode;
   controlMode: ControlMode;
+  controlSide: ControlSide;
+  onChangeControlSide: (side: ControlSide) => void;
   onExit: () => void;
   onScoresChanged: (scores: HighScores) => void;
 }
@@ -22,10 +30,19 @@ interface GameScreenProps {
 const SCREEN_PADDING = 12;
 const HEADER_HEIGHT = 48;
 const SECTION_GAP = 8;
-const CONTROLS_HEIGHT = 68; // button row (buttons mode only)
-const HINT_HEIGHT = 28; // gesture hint under the board (gestures mode only)
+const PANEL_HEIGHT = 140; // buttons mode: status box + button cluster, side by side
+const BAR_HEIGHT = 50; // gestures mode: one-row status bar under the board
+const HINT_HEIGHT = 30; // gestures mode: hint line under the bar
+const BOARD_BORDER = 2;
 
-export default function GameScreen({ mode, controlMode, onExit, onScoresChanged }: GameScreenProps) {
+export default function GameScreen({
+  mode,
+  controlMode,
+  controlSide,
+  onChangeControlSide,
+  onExit,
+  onScoresChanged,
+}: GameScreenProps) {
   const game = useTetris(mode);
   const { state } = game;
   const { width, height } = useWindowDimensions();
@@ -35,22 +52,20 @@ export default function GameScreen({ mode, controlMode, onExit, onScoresChanged 
   const insets = useSafeAreaInsets();
   const gestures = controlMode === 'gestures';
 
-  // Board size: full width when possible, otherwise as tall as the screen allows.
+  // The board sits at the top; it is as big as the width or the remaining height allows.
   const bottomPad = Math.max(insets.bottom, 12);
+  const belowBoard = gestures
+    ? SECTION_GAP + BAR_HEIGHT + HINT_HEIGHT
+    : SECTION_GAP + PANEL_HEIGHT;
   const reservedHeight =
-    insets.top +
-    HEADER_HEIGHT +
-    SCOREBOARD_HEIGHT +
-    SECTION_GAP * 2 +
-    bottomPad +
-    (gestures ? HINT_HEIGHT : CONTROLS_HEIGHT + SECTION_GAP) +
-    4; // board border
-  const availableWidth = width - SCREEN_PADDING * 2 - 4;
+    insets.top + HEADER_HEIGHT + SECTION_GAP + BOARD_BORDER * 2 + belowBoard + bottomPad;
+  const availableWidth = width - SCREEN_PADDING * 2 - BOARD_BORDER * 2;
   const availableHeight = height - reservedHeight;
   const cellSize = Math.max(
     12,
     Math.floor(Math.min(availableWidth / BOARD_COLS, availableHeight / BOARD_ROWS, 44)),
   );
+  const boardWidth = cellSize * BOARD_COLS + BOARD_BORDER * 2;
 
   const ended = state.status === 'over' || state.status === 'finished';
 
@@ -87,65 +102,117 @@ export default function GameScreen({ mode, controlMode, onExit, onScoresChanged 
     game.restart();
   };
 
+  // Gestures mode: a tap on the landing shadow drops the piece, a tap anywhere else rotates it.
+  // The touch area spans the full width and the board is centered in it, SECTION_GAP from the top.
+  const handleTap = (x: number, y: number) => {
+    const boardLeft = (width - boardWidth) / 2;
+    if (hitsGhost(x, y, state.piece, game.ghostRow, cellSize, boardLeft, SECTION_GAP)) {
+      game.hardDrop();
+    } else {
+      game.rotateCW();
+    }
+  };
+
   const board = (
     <Board grid={state.grid} piece={state.piece} ghostRow={game.ghostRow} cellSize={cellSize} />
   );
 
+  const status = (layout: 'bar' | 'box', boxHeight: number) => (
+    <ScoreBoard
+      mode={mode}
+      score={state.score}
+      lines={state.lines}
+      level={state.level}
+      elapsedMs={state.elapsedMs}
+      next={state.next}
+      layout={layout}
+      height={boxHeight}
+    />
+  );
+
+  const buttonsOnRight = controlSide === 'right';
+  const controls = (
+    <View style={styles.panelHalf}>
+      <Controls
+        onLeft={game.moveLeft}
+        onRight={game.moveRight}
+        onSoftDrop={game.softDrop}
+        onRotate={game.rotateCW}
+        height={PANEL_HEIGHT}
+      />
+    </View>
+  );
+  const statusBox = <View style={styles.panelHalf}>{status('box', PANEL_HEIGHT)}</View>;
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Menüye dön"
-          onPress={onExit}
-          style={styles.headerButton}
-        >
-          <Text style={styles.headerButtonText}>‹ Menü</Text>
-        </Pressable>
+        <View style={[styles.headerSide, styles.headerLeft]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Menüye dön"
+            onPress={onExit}
+            style={styles.headerButton}
+          >
+            <Text style={styles.headerButtonText}>‹ Menü</Text>
+          </Pressable>
+        </View>
         <Text style={styles.headerTitle}>{modeTitle}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={paused ? 'Devam et' : 'Duraklat'}
-          onPress={game.togglePause}
-          disabled={ended}
-          style={styles.headerButton}
-        >
-          <Text style={styles.headerButtonText}>{paused ? 'Devam' : 'Duraklat'}</Text>
-        </Pressable>
+        <View style={[styles.headerSide, styles.headerRight]}>
+          {!gestures && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tuşları diğer yana al"
+              onPress={() => onChangeControlSide(buttonsOnRight ? 'left' : 'right')}
+              hitSlop={8}
+              style={styles.swapButton}
+            >
+              <Text style={styles.swapText}>⇄</Text>
+            </Pressable>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={paused ? 'Devam et' : 'Duraklat'}
+            onPress={game.togglePause}
+            disabled={ended}
+            style={styles.headerButton}
+          >
+            <Text style={styles.headerButtonText}>{paused ? 'Devam' : 'Duraklat'}</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <ScoreBoard
-        mode={mode}
-        score={state.score}
-        lines={state.lines}
-        level={state.level}
-        elapsedMs={state.elapsedMs}
-        next={state.next}
-      />
-
       {gestures ? (
-        // Buttonless: the whole area below the HUD is the touch surface.
+        // Buttonless: everything below the header is the touch surface.
         <GestureArea
           cellSize={cellSize}
           onLeft={game.moveLeft}
           onRight={game.moveRight}
           onSoftDrop={game.softDrop}
-          onRotate={game.rotateCW}
+          onTap={handleTap}
           style={styles.playfield}
         >
           {board}
-          <Text style={styles.hint}>dokun: döndür · kaydır: yana · basılı tut: aşağı</Text>
+          <View style={styles.barWrap}>{status('bar', BAR_HEIGHT)}</View>
+          <Text style={styles.hint}>
+            dokun: döndür · gölgeye dokun: çat diye indir · kaydır: yana · basılı tut: aşağı
+          </Text>
         </GestureArea>
       ) : (
         <>
           <View style={styles.playfield}>{board}</View>
-          <View style={[styles.controls, { paddingBottom: bottomPad }]}>
-            <Controls
-              onLeft={game.moveLeft}
-              onRight={game.moveRight}
-              onSoftDrop={game.softDrop}
-              onRotate={game.rotateCW}
-            />
+          <View style={[styles.panel, { paddingBottom: bottomPad }]}>
+            {buttonsOnRight ? (
+              <>
+                {statusBox}
+                {controls}
+              </>
+            ) : (
+              <>
+                {controls}
+                {statusBox}
+              </>
+            )}
           </View>
         </>
       )}
@@ -208,25 +275,45 @@ const styles = StyleSheet.create({
     height: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: SCREEN_PADDING,
   },
+  headerSide: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  headerLeft: { justifyContent: 'flex-start' },
+  headerRight: { justifyContent: 'flex-end', gap: 4 },
   headerTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700', letterSpacing: 2 },
-  headerButton: { paddingVertical: 8, paddingHorizontal: 6, minWidth: 72 },
+  headerButton: { paddingVertical: 8, paddingHorizontal: 6 },
   headerButtonText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
+  swapButton: {
+    width: 34,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swapText: { color: COLORS.textSecondary, fontSize: 15, fontWeight: '700' },
   playfield: {
     flex: 1,
     alignItems: 'center',
     paddingTop: SECTION_GAP,
   },
+  barWrap: { alignSelf: 'stretch', marginTop: SECTION_GAP },
   hint: {
     color: COLORS.textSecondary,
     opacity: 0.55,
-    fontSize: 12,
-    marginTop: 10,
-    letterSpacing: 0.5,
+    fontSize: 11,
+    marginTop: 8,
+    paddingHorizontal: SCREEN_PADDING,
+    textAlign: 'center',
   },
-  controls: { paddingTop: SECTION_GAP },
+  panel: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: SECTION_GAP,
+    paddingHorizontal: SCREEN_PADDING,
+  },
+  panelHalf: { flex: 1 },
   overlay: {
     position: 'absolute',
     top: 0,
