@@ -1,37 +1,11 @@
+// The game modes. Their names and descriptions live in the translations (`mode.<id>.title` ...).
 export type GameMode = 'marathon' | 'sprint' | 'zen' | 'ultra';
 
-export interface ModeInfo {
-  id: GameMode;
-  title: string;
-  subtitle: string;
-  description: string;
-}
-
-export const MODES: readonly ModeInfo[] = [
-  {
-    id: 'marathon',
-    title: 'Maraton',
-    subtitle: 'Klasik · 15 seviye',
-    description: 'Satır temizledikçe hız artar. 150 satıra ulaş.',
-  },
-  {
-    id: 'sprint',
-    title: 'Sprint',
-    subtitle: '40 satır',
-    description: '40 satırı en kısa sürede temizle.',
-  },
-  {
-    id: 'zen',
-    title: 'Zen',
-    subtitle: 'Rahatlatıcı',
-    description: 'Hızlanma yok, oyun bitmez. Sadece keyfine bak.',
-  },
-  {
-    id: 'ultra',
-    title: 'Ultra',
-    subtitle: '2 dakika',
-    description: '2 dakikada olabildiğince çok puan topla.',
-  },
+export const MODES: readonly { id: GameMode }[] = [
+  { id: 'marathon' },
+  { id: 'sprint' },
+  { id: 'zen' },
+  { id: 'ultra' },
 ];
 
 export const SPRINT_TARGET_LINES = 40;

@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { COLORS, PIECE_COLORS } from '../constants/colors';
+import { useApp } from '../app/AppContext';
+import type { ThemeColors } from '../constants/colors';
 import { BOARD_COLS, BOARD_ROWS, getMatrix, type TetrominoType } from '../constants/tetrominos';
 import { CLEAR_ANIM_MS, type ActivePiece, type Grid } from '../hooks/useTetris';
 
@@ -20,16 +21,18 @@ interface CellProps {
 }
 
 const BoardCell = memo(function BoardCell({ type, ghost, size }: CellProps) {
+  const { theme } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   if (type === null) {
     return <View style={[styles.cell, styles.empty, { width: size, height: size }]} />;
   }
-  const color = PIECE_COLORS[type];
+  const color = theme.pieces[type];
   if (ghost) {
     return (
       <View
         style={[
           styles.cell,
-          { width: size, height: size, backgroundColor: COLORS.ghost, borderColor: color },
+          { width: size, height: size, backgroundColor: theme.ghost, borderColor: color },
         ]}
       />
     );
@@ -76,6 +79,8 @@ function buildDisplay(grid: Grid, piece: ActivePiece | null, ghostRow: number | 
 
 /** White flash over the cleared rows: bright, a quick dip, bright again, then fade out. */
 function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
+  const { theme } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -105,6 +110,8 @@ function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
 }
 
 function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
+  const { theme } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
 
   // Three or more rows at once make the whole board shake; a tetris shakes harder.
@@ -149,17 +156,18 @@ function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
 
 export default memo(Board);
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) =>
+  StyleSheet.create({
   board: {
-    backgroundColor: COLORS.boardBg,
-    borderColor: COLORS.border,
+    backgroundColor: c.boardBg,
+    borderColor: c.border,
     borderWidth: 2,
     borderRadius: 6,
     overflow: 'hidden',
   },
   row: { flexDirection: 'row' },
-  flash: { position: 'absolute', left: 0, backgroundColor: COLORS.textPrimary },
-  cell: { borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
-  empty: { backgroundColor: COLORS.boardBg },
+  flash: { position: 'absolute', left: 0, backgroundColor: c.textPrimary },
+  cell: { borderWidth: StyleSheet.hairlineWidth, borderColor: c.border },
+  empty: { backgroundColor: c.boardBg },
   filled: { borderWidth: 1, borderColor: 'rgba(247, 232, 236, 0.22)', borderRadius: 2 },
 });

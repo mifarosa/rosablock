@@ -1,6 +1,7 @@
-import React, { memo, useCallback, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { useApp } from '../app/AppContext';
+import type { ThemeColors } from '../constants/colors';
 
 interface ControlsProps {
   onLeft: () => void;
@@ -28,6 +29,8 @@ const PadButton = memo(function PadButton({
   onPress,
   repeat = false,
 }: PadButtonProps) {
+  const { theme } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -68,15 +71,17 @@ const PadButton = memo(function PadButton({
  *   ◀  ▶
  */
 function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsProps) {
+  const { theme, t } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={[styles.cluster, { height }]}>
       <View style={styles.row}>
-        <PadButton label="↻" accessibilityLabel="Döndür" onPress={onRotate} />
-        <PadButton label="▼" accessibilityLabel="Aşağı" onPress={onSoftDrop} repeat />
+        <PadButton label="↻" accessibilityLabel={t('a11y.rotate')} onPress={onRotate} />
+        <PadButton label="▼" accessibilityLabel={t('a11y.down')} onPress={onSoftDrop} repeat />
       </View>
       <View style={styles.row}>
-        <PadButton label="◀" accessibilityLabel="Sola" onPress={onLeft} repeat />
-        <PadButton label="▶" accessibilityLabel="Sağa" onPress={onRight} repeat />
+        <PadButton label="◀" accessibilityLabel={t('a11y.left')} onPress={onLeft} repeat />
+        <PadButton label="▶" accessibilityLabel={t('a11y.right')} onPress={onRight} repeat />
       </View>
     </View>
   );
@@ -84,18 +89,19 @@ function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsPro
 
 export default memo(Controls);
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) =>
+  StyleSheet.create({
   cluster: { gap: GAP },
   row: { flex: 1, flexDirection: 'row', gap: GAP },
   button: {
     flex: 1,
     borderRadius: 18,
-    backgroundColor: COLORS.border,
+    backgroundColor: c.border,
     borderWidth: 2,
-    borderColor: COLORS.textSecondary,
+    borderColor: c.textSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: { backgroundColor: COLORS.boardBg, borderColor: COLORS.textPrimary },
-  label: { color: COLORS.textPrimary, fontSize: 26, fontWeight: '700' },
+  pressed: { backgroundColor: c.boardBg, borderColor: c.textPrimary },
+  label: { color: c.textPrimary, fontSize: 26, fontWeight: '700' },
 });

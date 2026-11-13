@@ -1,33 +1,28 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
 import { Dialog, DialogButton } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
 import ScoreBoard from '../components/ScoreBoard';
-import { COLORS } from '../constants/colors';
-import { MODES, type GameMode } from '../constants/modes';
+import ThemeBackground from '../components/ThemeBackground';
+import type { ThemeColors } from '../constants/colors';
+import type { GameMode } from '../constants/modes';
+import type { StringKey } from '../i18n/strings';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { useTetris, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { hitsGhost } from '../utils/ghostHit';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
 import { dropHaptic, finishHaptic, gameOverHaptic, lineClearHaptic } from '../utils/haptics';
-import {
-  saveResult,
-  type ControlMode,
-  type ControlSide,
-  type HighScores,
-} from '../utils/storage';
+import { saveResult, type HighScores } from '../utils/storage';
 
 interface GameScreenProps {
   mode: GameMode;
   /** A saved game to continue (it opens paused), or null for a fresh game. */
   initialState: GameState | null;
-  controlMode: ControlMode;
-  controlSide: ControlSide;
-  onChangeControlSide: (side: ControlSide) => void;
   onExit: () => void;
   onScoresChanged: (scores: HighScores) => void;
 }
@@ -43,12 +38,12 @@ const BOARD_BORDER = 2;
 export default function GameScreen({
   mode,
   initialState,
-  controlMode,
-  controlSide,
-  onChangeControlSide,
   onExit,
   onScoresChanged,
 }: GameScreenProps) {
+  const { theme, t, settings, update } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { controlMode, controlSide } = settings;
   const game = useTetris(mode, initialState);
   const { state } = game;
   const { width, height } = useWindowDimensions();
@@ -108,7 +103,21 @@ export default function GameScreen({
     return () => clearTimeout(id);
   }, [countdown, togglePause]);
 
+  // Leaving a game that is still going counts what was scored so far toward the best score
+  // (Sprint only counts a finished run).
   const exitToMenu = async () => {
+    const s = latest.current;
+    const unfinished = s.status !== 'over' && s.status !== 'finished';
+    if (unfinished && mode !== 'sprint' && s.score > 0) {
+      const { scores, isNewBest: best } = await saveResult({
+        mode,
+        score: s.score,
+        lines: s.lines,
+        timeMs: s.elapsedMs,
+        completed: false,
+      });
+      if (best) onScoresChanged(scores);
+    }
     await persist();
     onExit();
   };
@@ -150,13 +159,13 @@ export default function GameScreen({
     });
   }, [ended, mode, state.score, state.lines, state.elapsedMs, state.status, onScoresChanged]);
 
-  const modeTitle = MODES.find((m) => m.id === mode)?.title ?? '';
+  const modeTitle = t(`mode.${mode}.title` as StringKey);
   const paused = state.status === 'paused';
   const showPauseDialog = paused && countdown === null;
 
-  let endTitle = 'Oyun Bitti';
+  let endTitle = t('game.over');
   if (state.status === 'finished') {
-    endTitle = mode === 'ultra' ? 'Süre Doldu' : 'Tamamlandı!';
+    endTitle = mode === 'ultra' ? t('game.timeUp') : t('game.finished');
   }
 
   const restart = () => {
@@ -193,6 +202,9 @@ export default function GameScreen({
       level={state.level}
       elapsedMs={state.elapsedMs}
       next={state.next}
+      held={state.held}
+      holdUsed={state.holdUsed}
+      onHold={game.hold}
       layout={layout}
       height={boxHeight}
     />
@@ -214,15 +226,16 @@ export default function GameScreen({
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
+      <ThemeBackground />
       <View style={styles.header}>
         <View style={[styles.headerSide, styles.headerLeft]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Menüye dön"
+            accessibilityLabel={t('game.menu')}
             onPress={() => void exitToMenu()}
             style={styles.headerButton}
           >
-            <Text style={styles.headerButtonText}>‹ Menü</Text>
+            <Text style={styles.headerButtonText}>{t('game.menu')}</Text>
           </Pressable>
         </View>
         <Text style={styles.headerTitle}>{modeTitle}</Text>
@@ -230,8 +243,8 @@ export default function GameScreen({
           {!gestures && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Tuşları diğer yana al"
-              onPress={() => onChangeControlSide(buttonsOnRight ? 'left' : 'right')}
+              accessibilityLabel={t('game.swapSide')}
+              onPress={() => update({ controlSide: buttonsOnRight ? 'left' : 'right' })}
               hitSlop={8}
               style={styles.swapButton}
             >
@@ -240,12 +253,12 @@ export default function GameScreen({
           )}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={paused ? 'Devam et' : 'Duraklat'}
+            accessibilityLabel={paused ? t('game.resume') : t('game.pause')}
             onPress={game.togglePause}
             disabled={ended || countdown !== null}
             style={styles.headerButton}
           >
-            <Text style={styles.headerButtonText}>{paused ? 'Devam' : 'Duraklat'}</Text>
+            <Text style={styles.headerButtonText}>{paused ? t('game.resume') : t('game.pause')}</Text>
           </Pressable>
         </View>
       </View>
@@ -262,9 +275,7 @@ export default function GameScreen({
         >
           {board}
           <View style={styles.barWrap}>{status('bar', BAR_HEIGHT)}</View>
-          <Text style={styles.hint}>
-            dokun: döndür · gölgeye dokun: çat diye indir · kaydır: yana · basılı tut: aşağı
-          </Text>
+          <Text style={styles.hint}>{t('game.hintGestures')}</Text>
         </GestureArea>
       ) : (
         <>
@@ -292,30 +303,31 @@ export default function GameScreen({
       )}
 
       {(showPauseDialog || ended) && (
-        <Dialog title={showPauseDialog ? 'Duraklatıldı' : endTitle}>
+        <Dialog title={showPauseDialog ? t('game.paused') : endTitle}>
           {ended && (
             <View style={styles.summary}>
-              <Text style={styles.summaryLine}>Puan: {state.score}</Text>
-              <Text style={styles.summaryLine}>Satır: {state.lines}</Text>
-              <Text style={styles.summaryLine}>Süre: {formatTime(state.elapsedMs)}</Text>
-              {isNewBest && <Text style={styles.newBest}>Yeni rekor!</Text>}
+              <Text style={styles.summaryLine}>{t('game.score', { value: state.score })}</Text>
+              <Text style={styles.summaryLine}>{t('game.lines', { value: state.lines })}</Text>
+              <Text style={styles.summaryLine}>{t('game.time', { value: formatTime(state.elapsedMs) })}</Text>
+              {isNewBest && <Text style={styles.newBest}>{t('game.newBest')}</Text>}
             </View>
           )}
           {showPauseDialog ? (
-            <DialogButton label="Devam Et" onPress={game.togglePause} />
+            <DialogButton label={t('common.continue')} onPress={game.togglePause} />
           ) : (
-            <DialogButton label="Tekrar Oyna" onPress={restart} />
+            <DialogButton label={t('game.playAgain')} onPress={restart} />
           )}
-          {showPauseDialog && <DialogButton label="Yeniden Başla" onPress={restart} secondary />}
-          <DialogButton label="Ana Menü" onPress={() => void exitToMenu()} secondary />
+          {showPauseDialog && <DialogButton label={t('game.restart')} onPress={restart} secondary />}
+          <DialogButton label={t('game.mainMenu')} onPress={() => void exitToMenu()} secondary />
         </Dialog>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
+const makeStyles = (c: ThemeColors) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.background },
   header: {
     height: HEADER_HEIGHT,
     flexDirection: 'row',
@@ -325,19 +337,19 @@ const styles = StyleSheet.create({
   headerSide: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerLeft: { justifyContent: 'flex-start' },
   headerRight: { justifyContent: 'flex-end', gap: 4 },
-  headerTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700', letterSpacing: 2 },
+  headerTitle: { color: c.textPrimary, fontSize: 16, fontWeight: '700', letterSpacing: 2 },
   headerButton: { paddingVertical: 8, paddingHorizontal: 6 },
-  headerButtonText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
+  headerButtonText: { color: c.textSecondary, fontSize: 14, fontWeight: '600' },
   swapButton: {
     width: 34,
     height: 28,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swapText: { color: COLORS.textSecondary, fontSize: 15, fontWeight: '700' },
+  swapText: { color: c.textSecondary, fontSize: 15, fontWeight: '700' },
   playfield: {
     flex: 1,
     alignItems: 'center',
@@ -345,7 +357,7 @@ const styles = StyleSheet.create({
   },
   barWrap: { alignSelf: 'stretch', marginTop: SECTION_GAP },
   hint: {
-    color: COLORS.textSecondary,
+    color: c.textSecondary,
     opacity: 0.55,
     fontSize: 11,
     marginTop: 8,
@@ -369,8 +381,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  countdownText: { color: COLORS.textPrimary, fontSize: 96, fontWeight: '800' },
+  countdownText: { color: c.textPrimary, fontSize: 96, fontWeight: '800' },
   summary: { alignItems: 'center', gap: 4, marginBottom: 8 },
-  summaryLine: { color: COLORS.textSecondary, fontSize: 16 },
-  newBest: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700', marginTop: 4 },
+  summaryLine: { color: c.textSecondary, fontSize: 16 },
+  newBest: { color: c.textPrimary, fontSize: 16, fontWeight: '700', marginTop: 4 },
 });
