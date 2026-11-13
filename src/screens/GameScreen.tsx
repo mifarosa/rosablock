@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
+import { Dialog, DialogButton } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
 import ScoreBoard from '../components/ScoreBoard';
 import { COLORS } from '../constants/colors';
@@ -90,6 +91,23 @@ export default function GameScreen({
     void persist();
   }, [state.grid, state.status, persist]);
 
+  // A continued game opens paused; a short countdown replaces a second "continue?" prompt.
+  const [countdown, setCountdown] = useState<number | null>(initialState ? 3 : null);
+  const { togglePause } = game;
+  useEffect(() => {
+    if (countdown === null) return undefined;
+    const id = setTimeout(() => {
+      if (countdown > 1) {
+        setCountdown(countdown - 1);
+        return;
+      }
+      setCountdown(null);
+      // Do not start the game behind the player's back if the app went to the background.
+      if (AppState.currentState === 'active' && latest.current.status === 'paused') togglePause();
+    }, 700);
+    return () => clearTimeout(id);
+  }, [countdown, togglePause]);
+
   const exitToMenu = async () => {
     await persist();
     onExit();
@@ -134,6 +152,7 @@ export default function GameScreen({
 
   const modeTitle = MODES.find((m) => m.id === mode)?.title ?? '';
   const paused = state.status === 'paused';
+  const showPauseDialog = paused && countdown === null;
 
   let endTitle = 'Oyun Bitti';
   if (state.status === 'finished') {
@@ -223,7 +242,7 @@ export default function GameScreen({
             accessibilityRole="button"
             accessibilityLabel={paused ? 'Devam et' : 'Duraklat'}
             onPress={game.togglePause}
-            disabled={ended}
+            disabled={ended || countdown !== null}
             style={styles.headerButton}
           >
             <Text style={styles.headerButtonText}>{paused ? 'Devam' : 'Duraklat'}</Text>
@@ -266,55 +285,32 @@ export default function GameScreen({
         </>
       )}
 
-      {(paused || ended) && (
-        <View style={styles.overlay}>
-          <View style={styles.dialog}>
-            <Text style={styles.dialogTitle}>{paused ? 'Duraklatıldı' : endTitle}</Text>
-            {ended && (
-              <View style={styles.summary}>
-                <Text style={styles.summaryLine}>Puan: {state.score}</Text>
-                <Text style={styles.summaryLine}>Satır: {state.lines}</Text>
-                <Text style={styles.summaryLine}>Süre: {formatTime(state.elapsedMs)}</Text>
-                {isNewBest && <Text style={styles.newBest}>Yeni rekor!</Text>}
-              </View>
-            )}
-            {paused ? (
-              <DialogButton label="Devam Et" onPress={game.togglePause} />
-            ) : (
-              <DialogButton label="Tekrar Oyna" onPress={restart} />
-            )}
-            {paused && <DialogButton label="Yeniden Başla" onPress={restart} secondary />}
-            <DialogButton label="Ana Menü" onPress={() => void exitToMenu()} secondary />
-          </View>
+      {countdown !== null && (
+        <View style={styles.countdownOverlay} pointerEvents="none">
+          <Text style={styles.countdownText}>{countdown}</Text>
         </View>
       )}
-    </View>
-  );
-}
 
-function DialogButton({
-  label,
-  onPress,
-  secondary = false,
-}: {
-  label: string;
-  onPress: () => void;
-  secondary?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.dialogButton,
-        secondary && styles.dialogButtonSecondary,
-        pressed && styles.dialogButtonPressed,
-      ]}
-    >
-      <Text style={[styles.dialogButtonText, secondary && styles.dialogButtonTextSecondary]}>
-        {label}
-      </Text>
-    </Pressable>
+      {(showPauseDialog || ended) && (
+        <Dialog title={showPauseDialog ? 'Duraklatıldı' : endTitle}>
+          {ended && (
+            <View style={styles.summary}>
+              <Text style={styles.summaryLine}>Puan: {state.score}</Text>
+              <Text style={styles.summaryLine}>Satır: {state.lines}</Text>
+              <Text style={styles.summaryLine}>Süre: {formatTime(state.elapsedMs)}</Text>
+              {isNewBest && <Text style={styles.newBest}>Yeni rekor!</Text>}
+            </View>
+          )}
+          {showPauseDialog ? (
+            <DialogButton label="Devam Et" onPress={game.togglePause} />
+          ) : (
+            <DialogButton label="Tekrar Oyna" onPress={restart} />
+          )}
+          {showPauseDialog && <DialogButton label="Yeniden Başla" onPress={restart} secondary />}
+          <DialogButton label="Ana Menü" onPress={() => void exitToMenu()} secondary />
+        </Dialog>
+      )}
+    </View>
   );
 }
 
@@ -363,47 +359,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
   },
   panelHalf: { flex: 1 },
-  overlay: {
+  countdownOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: COLORS.overlay,
+    backgroundColor: 'rgba(26, 20, 22, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dialog: {
-    width: 280,
-    backgroundColor: COLORS.boardBg,
-    borderColor: COLORS.border,
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 20,
-    gap: 10,
-  },
-  dialogTitle: {
-    color: COLORS.textPrimary,
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
+  countdownText: { color: COLORS.textPrimary, fontSize: 96, fontWeight: '800' },
   summary: { alignItems: 'center', gap: 4, marginBottom: 8 },
   summaryLine: { color: COLORS.textSecondary, fontSize: 16 },
   newBest: { color: COLORS.textPrimary, fontSize: 16, fontWeight: '700', marginTop: 4 },
-  dialogButton: {
-    backgroundColor: COLORS.textSecondary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  dialogButtonSecondary: {
-    backgroundColor: 'transparent',
-    borderColor: COLORS.border,
-    borderWidth: 2,
-  },
-  dialogButtonPressed: { opacity: 0.7 },
-  dialogButtonText: { color: COLORS.background, fontSize: 16, fontWeight: '700' },
-  dialogButtonTextSecondary: { color: COLORS.textPrimary },
 });

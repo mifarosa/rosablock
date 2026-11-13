@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Dialog, DialogButton, DialogText } from './src/components/Dialog';
 import { COLORS } from './src/constants/colors';
 import { MODES, type GameMode } from './src/constants/modes';
 import type { GameState } from './src/hooks/useTetris';
@@ -66,31 +67,31 @@ export default function App() {
     setSession(null);
   }, []);
 
-  // A mode with a saved game asks whether to continue it or start over.
+  // A mode with a saved game asks (in the app's own dialog) whether to continue or start over.
+  const [pendingMode, setPendingMode] = useState<GameMode | null>(null);
   const handleSelectMode = useCallback(
     (mode: GameMode) => {
-      const saved = savedGames[mode];
-      if (!saved) {
-        setSession({ mode, initial: null });
-        return;
-      }
-      const title = MODES.find((m) => m.id === mode)?.title ?? '';
-      Alert.alert(title, `Kaldığın yerden devam edebilirsin (${saved.score} puan, ${saved.lines} satır).`, [
-        { text: 'Devam Et', onPress: () => setSession({ mode, initial: saved }) },
-        {
-          text: 'Yeni Başla',
-          style: 'destructive',
-          onPress: () => {
-            void clearGame(mode);
-            setSavedGames((prev) => ({ ...prev, [mode]: undefined }));
-            setSession({ mode, initial: null });
-          },
-        },
-        { text: 'İptal', style: 'cancel' },
-      ]);
+      if (savedGames[mode]) setPendingMode(mode);
+      else setSession({ mode, initial: null });
     },
     [savedGames],
   );
+  const pendingSaved = pendingMode ? savedGames[pendingMode] : undefined;
+  const pendingTitle = MODES.find((m) => m.id === pendingMode)?.title ?? '';
+
+  const continueSaved = () => {
+    if (pendingMode && pendingSaved) setSession({ mode: pendingMode, initial: pendingSaved });
+    setPendingMode(null);
+  };
+  const startOver = () => {
+    if (pendingMode) {
+      void clearGame(pendingMode);
+      setSavedGames((prev) => ({ ...prev, [pendingMode]: undefined }));
+      setSession({ mode: pendingMode, initial: null });
+    }
+    setPendingMode(null);
+  };
+
   const handleChangeControlMode = useCallback((value: ControlMode) => {
     setControlMode(value);
     void saveControlMode(value);
@@ -132,6 +133,17 @@ export default function App() {
             onExit={handleExit}
             onScoresChanged={setHighScores}
           />
+        )}
+        {session === null && pendingMode !== null && pendingSaved && (
+          <Dialog title={pendingTitle}>
+            <DialogText>
+              Kaldığın yerden devam edebilirsin ({pendingSaved.score} puan, {pendingSaved.lines}{' '}
+              satır).
+            </DialogText>
+            <DialogButton label="Devam Et" onPress={continueSaved} />
+            <DialogButton label="Yeni Başla" onPress={startOver} secondary />
+            <DialogButton label="İptal" onPress={() => setPendingMode(null)} secondary />
+          </Dialog>
         )}
       </View>
     </SafeAreaProvider>
