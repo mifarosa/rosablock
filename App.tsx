@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { startAds } from './src/ads/rewarded';
 import { AppProvider, useApp } from './src/app/AppContext';
 import { Dialog, DialogButton, DialogText } from './src/components/Dialog';
 import type { GameMode } from './src/constants/modes';
@@ -28,6 +29,7 @@ function Root() {
   const [pendingMode, setPendingMode] = useState<GameMode | null>(null);
 
   useEffect(() => {
+    startAds(); // have the first rewarded ad ready by the time a game can end
     let alive = true;
     void loadSavedGames().then((games) => {
       if (alive) setSavedGames(games);

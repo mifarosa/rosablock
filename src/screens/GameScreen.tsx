@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
-import { Dialog, DialogButton } from '../components/Dialog';
+import { Dialog, DialogButton, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
 import ScoreBoard from '../components/ScoreBoard';
 import ThemeBackground from '../components/ThemeBackground';
@@ -12,7 +13,7 @@ import type { ThemeColors } from '../constants/colors';
 import type { GameMode } from '../constants/modes';
 import type { StringKey } from '../i18n/strings';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
-import { useTetris, type GameState } from '../hooks/useTetris';
+import { canRevive, useTetris, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { hitsGhost } from '../utils/ghostHit';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
@@ -170,7 +171,27 @@ export default function GameScreen({
 
   const restart = () => {
     setIsNewBest(false);
+    setAdMessage(null);
     game.restart();
+  };
+
+  // Rewarded ad: one continue per game. The top half of the board is cleared, then 3-2-1.
+  const [adBusy, setAdBusy] = useState(false);
+  const [adMessage, setAdMessage] = useState<string | null>(null);
+  const offerRevive = state.status === 'over' && canRevive(state);
+  const watchAd = async () => {
+    if (adBusy) return;
+    setAdBusy(true);
+    setAdMessage(null);
+    const result = await watchRewardedAd();
+    setAdBusy(false);
+    if (result === 'rewarded') {
+      setIsNewBest(false);
+      game.revive();
+      setCountdown(3);
+    } else if (result === 'unavailable') {
+      setAdMessage(t('game.adUnavailable'));
+    }
   };
 
   // Gestures mode: a tap on the landing shadow drops the piece, a tap anywhere else rotates it.
@@ -312,10 +333,17 @@ export default function GameScreen({
               {isNewBest && <Text style={styles.newBest}>{t('game.newBest')}</Text>}
             </View>
           )}
+          {offerRevive && (
+            <DialogButton
+              label={adBusy ? t('game.adLoading') : t('game.watchAd')}
+              onPress={() => void watchAd()}
+            />
+          )}
+          {adMessage !== null && <DialogText>{adMessage}</DialogText>}
           {showPauseDialog ? (
             <DialogButton label={t('common.continue')} onPress={game.togglePause} />
           ) : (
-            <DialogButton label={t('game.playAgain')} onPress={restart} />
+            <DialogButton label={t('game.playAgain')} onPress={restart} secondary={offerRevive} />
           )}
           {showPauseDialog && <DialogButton label={t('game.restart')} onPress={restart} secondary />}
           <DialogButton label={t('game.mainMenu')} onPress={() => void exitToMenu()} secondary />
