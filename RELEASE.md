@@ -31,5 +31,5 @@ A build takes 30-60 minutes. The `.ipa` stays downloadable for one day; to uploa
 
 ## Before the first App Store submission
 
-`app.json` has no app icon yet: add a 1024x1024 PNG and set `expo.icon` (TestFlight/App Store
-reject builds without one). Bump `expo.version` for each release; the build number is automatic.
+The app icon is `assets/icon.png` (1024x1024, no alpha channel: Apple rejects icons with one).
+Bump `expo.version` for each release; the build number is automatic.

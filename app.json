@@ -24,6 +24,7 @@
         "projectId": "6c5b2244-d22d-42b6-8819-682705cfedfd"
       }
     },
-    "owner": "mifarosa"
+    "owner": "mifarosa",
+    "icon": "./assets/icon.png"
   }
 }
