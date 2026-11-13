@@ -1,14 +1,22 @@
 import React from 'react';
-import { Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
-import type { HighScores } from '../utils/storage';
+import type { ControlMode, HighScores } from '../utils/storage';
 import { formatTime } from '../utils/format';
 
 interface HomeScreenProps {
   highScores: HighScores;
+  controlMode: ControlMode;
   onSelectMode: (mode: GameMode) => void;
+  onChangeControlMode: (mode: ControlMode) => void;
 }
+
+const CONTROL_OPTIONS: { id: ControlMode; title: string; hint: string }[] = [
+  { id: 'gestures', title: 'Tuşsuz', hint: 'Dokun: döndür · kaydır: yana · basılı tut: aşağı' },
+  { id: 'buttons', title: 'Tuşlar', hint: 'Altta tek sıra tuş, tek elle oynanır' },
+];
 
 function scoreLabel(mode: GameMode, scores: HighScores): string {
   if (mode === 'sprint') return scores.sprint === null ? '—' : formatTime(scores.sprint);
@@ -16,9 +24,15 @@ function scoreLabel(mode: GameMode, scores: HighScores): string {
   return value > 0 ? String(value) : '—';
 }
 
-export default function HomeScreen({ highScores, onSelectMode }: HomeScreenProps) {
+export default function HomeScreen({
+  highScores,
+  controlMode,
+  onSelectMode,
+  onChangeControlMode,
+}: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>ROSABLOCK</Text>
         <Text style={styles.tagline}>sakin · çevrimdışı · reklamsız</Text>
@@ -39,6 +53,29 @@ export default function HomeScreen({ highScores, onSelectMode }: HomeScreenProps
             <Text style={styles.cardDescription}>{mode.description}</Text>
           </Pressable>
         ))}
+
+        <Text style={styles.section}>KONTROL</Text>
+        <View style={styles.segment}>
+          {CONTROL_OPTIONS.map((opt) => {
+            const active = opt.id === controlMode;
+            return (
+              <Pressable
+                key={opt.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => onChangeControlMode(opt.id)}
+                style={[styles.segmentItem, active && styles.segmentItemActive]}
+              >
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                  {opt.title}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.segmentHint}>
+          {CONTROL_OPTIONS.find((o) => o.id === controlMode)?.hint}
+        </Text>
 
         <Text style={styles.section}>EN İYİLER</Text>
         <View style={styles.scoreTable}>
@@ -61,7 +98,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 48,
   },
   content: { padding: 20, paddingBottom: 40 },
   title: {
@@ -94,6 +130,20 @@ const styles = StyleSheet.create({
   cardTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700' },
   cardSubtitle: { color: COLORS.textSecondary, fontSize: 12 },
   cardDescription: { color: COLORS.textSecondary, marginTop: 6, fontSize: 14 },
+  segment: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.boardBg,
+    borderColor: COLORS.border,
+    borderWidth: 2,
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  segmentItem: { flex: 1, paddingVertical: 10, borderRadius: 7, alignItems: 'center' },
+  segmentItemActive: { backgroundColor: COLORS.textSecondary },
+  segmentText: { color: COLORS.textSecondary, fontSize: 15, fontWeight: '700' },
+  segmentTextActive: { color: COLORS.background },
+  segmentHint: { color: COLORS.textSecondary, opacity: 0.8, fontSize: 13, marginTop: 8 },
   scoreTable: {
     backgroundColor: COLORS.boardBg,
     borderColor: COLORS.border,

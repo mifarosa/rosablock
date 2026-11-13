@@ -19,7 +19,8 @@ interface ScoreBoardProps {
   next: TetrominoType;
 }
 
-const PREVIEW_CELL = 14;
+const PREVIEW_CELL = 12;
+const PREVIEW_ROWS = 2; // every piece fits in 2 rows once trimmed (I is 1 row)
 
 /** Next piece preview: the shape's bounding box is trimmed so it is always centered. */
 function NextPiece({ type }: { type: TetrominoType }) {
@@ -54,12 +55,17 @@ function NextPiece({ type }: { type: TetrominoType }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
     </View>
   );
 }
 
+/** Compact one-row HUD that sits above the board. */
 function ScoreBoard({ mode, score, lines, level, elapsedMs, next }: ScoreBoardProps) {
   let timeLabel = 'SÜRE';
   let timeValue = formatTime(elapsedMs);
@@ -74,7 +80,7 @@ function ScoreBoard({ mode, score, lines, level, elapsedMs, next }: ScoreBoardPr
 
   return (
     <View style={styles.container}>
-      <View style={styles.stat}>
+      <View style={[styles.stat, styles.nextStat]}>
         <Text style={styles.statLabel}>SIRADAKİ</Text>
         <NextPiece type={next} />
       </View>
@@ -88,24 +94,33 @@ function ScoreBoard({ mode, score, lines, level, elapsedMs, next }: ScoreBoardPr
 
 export default memo(ScoreBoard);
 
+export const SCOREBOARD_HEIGHT = 58;
+
 const styles = StyleSheet.create({
-  container: { width: 112, gap: 8 },
+  container: {
+    height: SCOREBOARD_HEIGHT,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
   stat: {
+    flex: 1,
     backgroundColor: COLORS.boardBg,
     borderColor: COLORS.border,
     borderWidth: 2,
     borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    justifyContent: 'space-between',
   },
-  statLabel: { color: COLORS.textSecondary, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  nextStat: { flex: 1.1, alignItems: 'flex-start' },
+  statLabel: { color: COLORS.textSecondary, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   statValue: {
     color: COLORS.textPrimary,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    marginTop: 2,
     fontVariant: ['tabular-nums'],
   },
-  previewBox: { height: 4 * PREVIEW_CELL, marginTop: 6, alignItems: 'center', justifyContent: 'center' },
+  previewBox: { height: PREVIEW_ROWS * PREVIEW_CELL, justifyContent: 'center' },
   previewRow: { flexDirection: 'row' },
 });

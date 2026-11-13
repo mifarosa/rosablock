@@ -83,3 +83,29 @@ export async function saveResult(
   }
   return merged;
 }
+
+// ---------------------------------------------------------------------------
+// Control mode setting
+// ---------------------------------------------------------------------------
+
+export type ControlMode = 'gestures' | 'buttons';
+
+export const DEFAULT_CONTROL_MODE: ControlMode = 'gestures';
+const CONTROL_KEY = 'rosablock:controls:v1';
+
+export async function loadControlMode(): Promise<ControlMode> {
+  try {
+    const value = await AsyncStorage.getItem(CONTROL_KEY);
+    return value === 'buttons' || value === 'gestures' ? value : DEFAULT_CONTROL_MODE;
+  } catch {
+    return DEFAULT_CONTROL_MODE;
+  }
+}
+
+export async function saveControlMode(mode: ControlMode): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CONTROL_KEY, mode);
+  } catch {
+    // Not persisting the preference is harmless.
+  }
+}

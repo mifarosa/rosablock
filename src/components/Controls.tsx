@@ -6,9 +6,7 @@ interface ControlsProps {
   onLeft: () => void;
   onRight: () => void;
   onSoftDrop: () => void;
-  onHardDrop: () => void;
-  onRotateCW: () => void;
-  onRotateCCW: () => void;
+  onRotate: () => void;
 }
 
 const REPEAT_DELAY_MS = 170;
@@ -19,7 +17,6 @@ interface PadButtonProps {
   accessibilityLabel: string;
   onPress: () => void;
   repeat?: boolean;
-  wide?: boolean;
 }
 
 /** Retro pad button. With `repeat`, holding the button fires the action repeatedly (DAS-style). */
@@ -28,7 +25,6 @@ const PadButton = memo(function PadButton({
   accessibilityLabel,
   onPress,
   repeat = false,
-  wide = false,
 }: PadButtonProps) {
   const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -57,36 +53,22 @@ const PadButton = memo(function PadButton({
       accessibilityLabel={accessibilityLabel}
       onPressIn={start}
       onPressOut={stop}
-      hitSlop={6}
-      style={({ pressed }) => [styles.button, wide && styles.wide, pressed && styles.pressed]}
+      hitSlop={4}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
       <Text style={styles.label}>{label}</Text>
     </Pressable>
   );
 });
 
-function Controls({
-  onLeft,
-  onRight,
-  onSoftDrop,
-  onHardDrop,
-  onRotateCW,
-  onRotateCCW,
-}: ControlsProps) {
+/** One row at the bottom: every button is reachable by one thumb. */
+function Controls({ onLeft, onRight, onSoftDrop, onRotate }: ControlsProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.dpad}>
-        <PadButton label="◀" accessibilityLabel="Sola" onPress={onLeft} repeat />
-        <PadButton label="▼" accessibilityLabel="Yavaş düşür" onPress={onSoftDrop} repeat />
-        <PadButton label="▶" accessibilityLabel="Sağa" onPress={onRight} repeat />
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.rotateRow}>
-          <PadButton label="↺" accessibilityLabel="Sola döndür" onPress={onRotateCCW} />
-          <PadButton label="↻" accessibilityLabel="Sağa döndür" onPress={onRotateCW} />
-        </View>
-        <PadButton label="DÜŞÜR" accessibilityLabel="Hızlı düşür" onPress={onHardDrop} wide />
-      </View>
+      <PadButton label="◀" accessibilityLabel="Sola" onPress={onLeft} repeat />
+      <PadButton label="▼" accessibilityLabel="Aşağı" onPress={onSoftDrop} repeat />
+      <PadButton label="▶" accessibilityLabel="Sağa" onPress={onRight} repeat />
+      <PadButton label="↻" accessibilityLabel="Döndür" onPress={onRotate} />
     </View>
   );
 }
@@ -96,25 +78,19 @@ export default memo(Controls);
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 10,
     paddingHorizontal: 12,
-    gap: 12,
   },
-  dpad: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  actions: { gap: 8, alignItems: 'flex-end' },
-  rotateRow: { flexDirection: 'row', gap: 8 },
   button: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    flex: 1,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: COLORS.border,
     borderWidth: 2,
     borderColor: COLORS.textSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wide: { width: 132, height: 52, borderRadius: 26 },
   pressed: { backgroundColor: COLORS.boardBg, borderColor: COLORS.textPrimary },
-  label: { color: COLORS.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: 1 },
+  label: { color: COLORS.textPrimary, fontSize: 26, fontWeight: '700' },
 });

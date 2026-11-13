@@ -1,47 +1,55 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Platform,
-  Pressable,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
-import ScoreBoard from '../components/ScoreBoard';
+import GestureArea from '../components/GestureArea';
+import ScoreBoard, { SCOREBOARD_HEIGHT } from '../components/ScoreBoard';
 import { COLORS } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { useTetris } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
-import { saveResult, type HighScores } from '../utils/storage';
+import { saveResult, type ControlMode, type HighScores } from '../utils/storage';
 
 interface GameScreenProps {
   mode: GameMode;
+  controlMode: ControlMode;
   onExit: () => void;
   onScoresChanged: (scores: HighScores) => void;
 }
 
-const SIDE_PANEL_WIDTH = 112;
 const SCREEN_PADDING = 12;
-const GAP = 12;
-const CHROME_HEIGHT = 48 + 150 + 24; // header + controls + vertical gaps
+const HEADER_HEIGHT = 48;
+const SECTION_GAP = 8;
+const CONTROLS_HEIGHT = 68; // button row (buttons mode only)
+const HINT_HEIGHT = 28; // gesture hint under the board (gestures mode only)
 
-export default function GameScreen({ mode, onExit, onScoresChanged }: GameScreenProps) {
+export default function GameScreen({ mode, controlMode, onExit, onScoresChanged }: GameScreenProps) {
   const game = useTetris(mode);
   const { state } = game;
   const { width, height } = useWindowDimensions();
   const [isNewBest, setIsNewBest] = useState(false);
   const savedRef = useRef(false);
 
-  const topInset = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 44;
-  const availableWidth = width - SCREEN_PADDING * 2 - SIDE_PANEL_WIDTH - GAP - 4;
-  const availableHeight = height - topInset - CHROME_HEIGHT - 4;
+  const insets = useSafeAreaInsets();
+  const gestures = controlMode === 'gestures';
+
+  // Board size: full width when possible, otherwise as tall as the screen allows.
+  const bottomPad = Math.max(insets.bottom, 12);
+  const reservedHeight =
+    insets.top +
+    HEADER_HEIGHT +
+    SCOREBOARD_HEIGHT +
+    SECTION_GAP * 2 +
+    bottomPad +
+    (gestures ? HINT_HEIGHT : CONTROLS_HEIGHT + SECTION_GAP) +
+    4; // board border
+  const availableWidth = width - SCREEN_PADDING * 2 - 4;
+  const availableHeight = height - reservedHeight;
   const cellSize = Math.max(
     12,
-    Math.floor(Math.min(availableWidth / BOARD_COLS, availableHeight / BOARD_ROWS, 36)),
+    Math.floor(Math.min(availableWidth / BOARD_COLS, availableHeight / BOARD_ROWS, 44)),
   );
 
   const ended = state.status === 'over' || state.status === 'finished';
@@ -79,8 +87,12 @@ export default function GameScreen({ mode, onExit, onScoresChanged }: GameScreen
     game.restart();
   };
 
+  const board = (
+    <Board grid={state.grid} piece={state.piece} ghostRow={game.ghostRow} cellSize={cellSize} />
+  );
+
   return (
-    <View style={[styles.root, { paddingTop: topInset }]}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -102,33 +114,41 @@ export default function GameScreen({ mode, onExit, onScoresChanged }: GameScreen
         </Pressable>
       </View>
 
-      <View style={styles.playfield}>
-        <Board
-          grid={state.grid}
-          piece={state.piece}
-          ghostRow={game.ghostRow}
-          cellSize={cellSize}
-        />
-        <ScoreBoard
-          mode={mode}
-          score={state.score}
-          lines={state.lines}
-          level={state.level}
-          elapsedMs={state.elapsedMs}
-          next={state.next}
-        />
-      </View>
+      <ScoreBoard
+        mode={mode}
+        score={state.score}
+        lines={state.lines}
+        level={state.level}
+        elapsedMs={state.elapsedMs}
+        next={state.next}
+      />
 
-      <View style={styles.controls}>
-        <Controls
+      {gestures ? (
+        // Buttonless: the whole area below the HUD is the touch surface.
+        <GestureArea
+          cellSize={cellSize}
           onLeft={game.moveLeft}
           onRight={game.moveRight}
           onSoftDrop={game.softDrop}
-          onHardDrop={game.hardDrop}
-          onRotateCW={game.rotateCW}
-          onRotateCCW={game.rotateCCW}
-        />
-      </View>
+          onRotate={game.rotateCW}
+          style={styles.playfield}
+        >
+          {board}
+          <Text style={styles.hint}>dokun: döndür · kaydır: yana · basılı tut: aşağı</Text>
+        </GestureArea>
+      ) : (
+        <>
+          <View style={styles.playfield}>{board}</View>
+          <View style={[styles.controls, { paddingBottom: bottomPad }]}>
+            <Controls
+              onLeft={game.moveLeft}
+              onRight={game.moveRight}
+              onSoftDrop={game.softDrop}
+              onRotate={game.rotateCW}
+            />
+          </View>
+        </>
+      )}
 
       {(paused || ended) && (
         <View style={styles.overlay}>
@@ -185,7 +205,7 @@ function DialogButton({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    height: 48,
+    height: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -196,13 +216,17 @@ const styles = StyleSheet.create({
   headerButtonText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
   playfield: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    gap: GAP,
-    paddingHorizontal: SCREEN_PADDING,
+    alignItems: 'center',
+    paddingTop: SECTION_GAP,
   },
-  controls: { height: 150, justifyContent: 'center' },
+  hint: {
+    color: COLORS.textSecondary,
+    opacity: 0.55,
+    fontSize: 12,
+    marginTop: 10,
+    letterSpacing: 0.5,
+  },
+  controls: { paddingTop: SECTION_GAP },
   overlay: {
     position: 'absolute',
     top: 0,
