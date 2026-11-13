@@ -13,6 +13,7 @@ export interface Settings {
   controlSide: ControlSide;
   haptics: boolean;
   sound: boolean;
+  music: boolean;
 }
 
 export function defaultSettings(): Settings {
@@ -23,6 +24,7 @@ export function defaultSettings(): Settings {
     controlSide: 'right',
     haptics: true,
     sound: true,
+    music: true,
   };
 }
 
@@ -43,6 +45,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (r.controlSide === 'left' || r.controlSide === 'right') out.controlSide = r.controlSide;
   if (typeof r.haptics === 'boolean') out.haptics = r.haptics;
   if (typeof r.sound === 'boolean') out.sound = r.sound;
+  if (typeof r.music === 'boolean') out.music = r.music;
   return out;
 }
 

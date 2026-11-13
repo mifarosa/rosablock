@@ -18,6 +18,7 @@ import { formatTime } from '../utils/format';
 import { hitsGhost } from '../utils/ghostHit';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
 import { dropHaptic, finishHaptic, gameOverHaptic, lineClearHaptic } from '../utils/haptics';
+import { pauseMusic, playSound, startMusic } from '../utils/sound';
 import { saveResult, type HighScores } from '../utils/storage';
 
 interface GameScreenProps {
@@ -99,7 +100,10 @@ export default function GameScreen({
       }
       setCountdown(null);
       // Do not start the game behind the player's back if the app went to the background.
-      if (AppState.currentState === 'active' && latest.current.status === 'paused') togglePause();
+      if (AppState.currentState === 'active' && latest.current.status === 'paused') {
+        playSound('go');
+        togglePause();
+      }
     }, 700);
     return () => clearTimeout(id);
   }, [countdown, togglePause]);
@@ -135,9 +139,73 @@ export default function GameScreen({
 
   // A hard drop of at least a couple of rows gets a solid thud.
   const { hardDrop: engineHardDrop, ghostRow } = game;
+  const droppedRef = useRef(false);
   const hardDrop = () => {
-    if (state.piece && ghostRow !== null && ghostRow - state.piece.row >= 2) dropHaptic();
+    if (state.piece && ghostRow !== null && ghostRow - state.piece.row >= 2) {
+      dropHaptic();
+      playSound('drop');
+      droppedRef.current = true; // the landing is already voiced by the drop sound
+    }
     engineHardDrop();
+  };
+
+  // Sounds for what happens on the board. Rows clearing, a piece landing, a new level, the end.
+  useEffect(() => {
+    if (clearingRows.length > 0) {
+      playSound(`clear${Math.min(clearingRows.length, 4)}` as 'clear1');
+    }
+  }, [clearingRows]);
+
+  const prevGrid = useRef(state.grid);
+  const prevClearing = useRef(false);
+  useEffect(() => {
+    const filled = (g: typeof state.grid) => g.reduce((n, row) => n + row.filter(Boolean).length, 0);
+    const grew = filled(state.grid) > filled(prevGrid.current);
+    prevGrid.current = state.grid;
+    const wasClearing = prevClearing.current;
+    prevClearing.current = state.clearingRows.length > 0;
+    if (!grew || wasClearing || state.clearingRows.length > 0) return;
+    if (droppedRef.current) droppedRef.current = false;
+    else playSound('land');
+  }, [state.grid, state.clearingRows]);
+
+  const prevLevel = useRef(state.level);
+  useEffect(() => {
+    if (state.level > prevLevel.current) playSound('levelUp');
+    prevLevel.current = state.level;
+  }, [state.level]);
+
+  useEffect(() => {
+    if (state.status === 'over') playSound('gameOver');
+    else if (state.status === 'finished') playSound('finished');
+  }, [state.status]);
+
+  useEffect(() => {
+    if (countdown !== null) playSound('tick');
+  }, [countdown]);
+
+  // Music runs while the game does, and rests while it is paused or over.
+  useEffect(() => {
+    if (settings.music && state.status === 'playing') startMusic();
+    else pauseMusic();
+  }, [settings.music, state.status]);
+  useEffect(() => pauseMusic, []);
+
+  const moveLeft = () => {
+    game.moveLeft();
+    playSound('move');
+  };
+  const moveRight = () => {
+    game.moveRight();
+    playSound('move');
+  };
+  const rotate = () => {
+    game.rotateCW();
+    playSound('rotate');
+  };
+  const holdPiece = () => {
+    game.hold();
+    playSound('hold');
   };
 
   // Persist the result exactly once per game.
@@ -201,7 +269,7 @@ export default function GameScreen({
     if (hitsGhost(x, y, state.piece, game.ghostRow, cellSize, boardLeft, SECTION_GAP)) {
       hardDrop();
     } else {
-      game.rotateCW();
+      rotate();
     }
   };
 
@@ -225,7 +293,7 @@ export default function GameScreen({
       next={state.next}
       held={state.held}
       holdUsed={state.holdUsed}
-      onHold={game.hold}
+      onHold={holdPiece}
       layout={layout}
       height={boxHeight}
     />
@@ -235,10 +303,10 @@ export default function GameScreen({
   const controls = (
     <View style={styles.panelHalf}>
       <Controls
-        onLeft={game.moveLeft}
-        onRight={game.moveRight}
+        onLeft={moveLeft}
+        onRight={moveRight}
         onSoftDrop={game.softDrop}
-        onRotate={game.rotateCW}
+        onRotate={rotate}
         height={PANEL_HEIGHT}
       />
     </View>
@@ -288,8 +356,8 @@ export default function GameScreen({
         // Buttonless: everything below the header is the touch surface.
         <GestureArea
           cellSize={cellSize}
-          onLeft={game.moveLeft}
-          onRight={game.moveRight}
+          onLeft={moveLeft}
+          onRight={moveRight}
           onSoftDrop={game.softDrop}
           onTap={handleTap}
           style={styles.playfield}

@@ -102,6 +102,9 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
         <Text style={styles.section}>{t('settings.sound')}</Text>
         <Segment options={onOff} value={settings.sound} onChange={(sound) => update({ sound })} />
+
+        <Text style={styles.section}>{t('settings.music')}</Text>
+        <Segment options={onOff} value={settings.music} onChange={(music) => update({ music })} />
       </ScrollView>
     </View>
   );
