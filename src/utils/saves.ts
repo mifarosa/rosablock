@@ -85,6 +85,9 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
     return null;
   }
 
+  // Fields added later: older saves simply do not have them.
+  if (s.held !== undefined && s.held !== null && !isType(s.held)) return null;
+
   let game: GameState = {
     mode,
     grid,
@@ -97,6 +100,9 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
     elapsedMs: s.elapsedMs,
     status: 'playing',
     clearingRows: s.clearingRows as number[],
+    held: isType(s.held) ? s.held : null,
+    holdUsed: s.holdUsed === true,
+    revived: s.revived === true,
   };
   // Saved in the middle of a line-clear flash: finish it now.
   if (game.clearingRows.length > 0) game = finishClear(game);

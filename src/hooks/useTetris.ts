@@ -46,6 +46,12 @@ export interface GameState {
   status: GameStatus;
   /** Rows that are full and being animated away; empty when nothing is clearing. */
   clearingRows: number[];
+  /** The piece set aside with "hold", if any. */
+  held: TetrominoType | null;
+  /** Hold may be used once per piece; this is true until the next piece arrives. */
+  holdUsed: boolean;
+  /** The one rewarded-ad "continue" of this game has been spent. */
+  revived: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,21 +153,20 @@ export function createGame(mode: GameMode): GameState {
     elapsedMs: 0,
     status: 'playing',
     clearingRows: [],
+    held: null,
+    holdUsed: false,
+    revived: false,
   };
 }
 
-/** Brings the next piece into play; handles top-out (Zen clears the board instead). */
+/** Brings the next piece into play; a blocked spawn ends the game. */
 function spawnNext(state: GameState): GameState {
   const piece = spawnPiece(state.next);
   const draw = drawFromBag(state.bag);
   const base: GameState = { ...state, next: draw.type, bag: draw.bag };
 
   if (!collides(base.grid, piece.type, piece.rotation, piece.row, piece.col)) {
-    return { ...base, piece };
-  }
-  if (state.mode === 'zen') {
-    // No game-over pressure in Zen: wipe the board and keep going.
-    return { ...base, grid: createEmptyGrid(), piece };
+    return { ...base, piece, holdUsed: false };
   }
   return { ...base, piece: null, status: 'over' };
 }
@@ -264,6 +269,51 @@ export function hardDrop(state: GameState): GameState {
   return lockPiece(state, { ...p, row: landing }, (landing - p.row) * 2);
 }
 
+/** Sets the falling piece aside (or swaps it with the held one). Once per piece. */
+export function holdPiece(state: GameState): GameState {
+  const p = state.piece;
+  if (state.status !== 'playing' || !p || state.holdUsed) return state;
+
+  if (state.held === null) {
+    const stashed: GameState = { ...state, held: p.type, piece: null };
+    return { ...spawnNext(stashed), holdUsed: true };
+  }
+  const swapped = spawnPiece(state.held);
+  if (collides(state.grid, swapped.type, swapped.rotation, swapped.row, swapped.col)) return state;
+  return { ...state, piece: swapped, held: p.type, holdUsed: true };
+}
+
+/** How many rows, counted from the top, the rewarded-ad continue wipes. */
+export const REVIVE_CLEAR_ROWS = 10;
+
+export function canRevive(state: GameState): boolean {
+  return state.status === 'over' && !state.revived && state.mode !== 'sprint';
+}
+
+/**
+ * The rewarded-ad continue: clears the top half of the board and brings the next piece.
+ * The game comes back paused so the screen can run its 3-2-1 before it starts moving.
+ */
+export function revive(state: GameState): GameState {
+  if (!canRevive(state)) return state;
+  const grid: Grid = state.grid.map((row, i) =>
+    i < REVIVE_CLEAR_ROWS ? new Array<Cell>(BOARD_COLS).fill(null) : [...row],
+  );
+  const piece = spawnPiece(state.next);
+  const draw = drawFromBag(state.bag);
+  return {
+    ...state,
+    grid,
+    piece,
+    next: draw.type,
+    bag: draw.bag,
+    status: 'paused',
+    revived: true,
+    holdUsed: false,
+    clearingRows: [],
+  };
+}
+
 export function addTime(state: GameState, deltaMs: number): GameState {
   if (state.status !== 'playing' || deltaMs <= 0) return state;
   const elapsedMs = state.elapsedMs + deltaMs;
@@ -295,6 +345,8 @@ export interface TetrisApi {
   moveRight: () => void;
   rotateCW: () => void;
   rotateCCW: () => void;
+  hold: () => void;
+  revive: () => void;
   softDrop: () => void;
   hardDrop: () => void;
   togglePause: () => void;
@@ -364,6 +416,8 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
   const moveRight = useCallback(() => commit((s) => movePiece(s, 1)), [commit]);
   const rotateCW = useCallback(() => commit((s) => rotatePiece(s, 1)), [commit]);
   const rotateCCW = useCallback(() => commit((s) => rotatePiece(s, -1)), [commit]);
+  const holdAction = useCallback(() => commit(holdPiece), [commit]);
+  const reviveAction = useCallback(() => commit(revive), [commit]);
   const softDropAction = useCallback(() => commit(softDrop), [commit]);
   const hardDropAction = useCallback(() => commit(hardDrop), [commit]);
   const togglePauseAction = useCallback(() => commit(togglePause), [commit]);
@@ -383,6 +437,8 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
     moveRight,
     rotateCW,
     rotateCCW,
+    hold: holdAction,
+    revive: reviveAction,
     softDrop: softDropAction,
     hardDrop: hardDropAction,
     togglePause: togglePauseAction,
