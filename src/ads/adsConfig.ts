@@ -13,8 +13,7 @@ export const ADS_LIVE = false;
 export const REWARDED_UNIT_ID = 'ca-app-pub-1672861293331033/6375518180';
 
 /**
- * The interstitial ad unit (shown between games) in AdMob. Looks like
- * `ca-app-pub-1672861293331033/XXXXXXXXXX`. Empty until the unit is created: with ADS_LIVE on and
- * no id, no interstitial is shown at all.
+ * The interstitial ad unit (shown between games) in AdMob. With ADS_LIVE on and no id, no
+ * interstitial is shown at all.
  */
-export const INTERSTITIAL_UNIT_ID = '';
+export const INTERSTITIAL_UNIT_ID = 'ca-app-pub-1672861293331033/2105100681';
