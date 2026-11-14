@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { maybeShowInterstitial } from './src/ads/interstitial';
 import { startAds } from './src/ads/rewarded';
 import { AppProvider, useApp } from './src/app/AppContext';
 import { Dialog, DialogButton, DialogText } from './src/components/Dialog';
@@ -48,12 +49,23 @@ function Root() {
     setScreen({ name: 'home' });
   }, []);
 
+  // A new game (not a continued one) may be preceded by an interstitial ad. `starting` keeps a
+  // second tap from starting the game twice while the ad is up.
+  const starting = useRef(false);
+  const startFresh = useCallback(async (mode: GameMode) => {
+    if (starting.current) return;
+    starting.current = true;
+    await maybeShowInterstitial();
+    setScreen({ name: 'game', mode, initial: null });
+    starting.current = false;
+  }, []);
+
   const handleSelectMode = useCallback(
     (mode: GameMode) => {
       if (savedGames[mode]) setPendingMode(mode);
-      else setScreen({ name: 'game', mode, initial: null });
+      else void startFresh(mode);
     },
-    [savedGames],
+    [savedGames, startFresh],
   );
 
   const pendingSaved = pendingMode ? savedGames[pendingMode] : undefined;
@@ -68,7 +80,7 @@ function Root() {
     if (pendingMode) {
       void clearGame(pendingMode);
       setSavedGames((prev) => ({ ...prev, [pendingMode]: undefined }));
-      setScreen({ name: 'game', mode: pendingMode, initial: null });
+      void startFresh(pendingMode);
     }
     setPendingMode(null);
   };

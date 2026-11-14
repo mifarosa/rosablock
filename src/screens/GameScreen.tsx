@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { maybeShowInterstitial } from '../ads/interstitial';
 import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
@@ -255,6 +256,16 @@ export default function GameScreen({
     game.restart();
   };
 
+  // "Play again" after a game: the new game may be preceded by an interstitial ad.
+  const [startingAgain, setStartingAgain] = useState(false);
+  const playAgain = async () => {
+    if (startingAgain) return;
+    setStartingAgain(true);
+    await maybeShowInterstitial();
+    setStartingAgain(false);
+    restart();
+  };
+
   // Rewarded ad: one continue per game. The top half of the board is cleared, then 3-2-1.
   const [adBusy, setAdBusy] = useState(false);
   const [adMessage, setAdMessage] = useState<string | null>(null);
@@ -419,7 +430,11 @@ export default function GameScreen({
           {showPauseDialog ? (
             <DialogButton label={t('common.continue')} onPress={game.togglePause} />
           ) : (
-            <DialogButton label={t('game.playAgain')} onPress={restart} secondary={offerRevive} />
+            <DialogButton
+              label={t('game.playAgain')}
+              onPress={() => void playAgain()}
+              secondary={offerRevive}
+            />
           )}
           {showPauseDialog && <DialogButton label={t('game.restart')} onPress={restart} secondary />}
           <DialogButton label={t('game.mainMenu')} onPress={() => void exitToMenu()} secondary />

@@ -1,5 +1,7 @@
 import { ADS_LIVE, REWARDED_UNIT_ID } from './adsConfig';
+import { noteAdShown, sessionPacing } from './adPacing';
 import { getSdk, type AdsSdk } from './adsSdk';
+import { loadInterstitial } from './interstitial';
 
 /** How long a player waits for an ad that is still loading before it counts as not there. */
 export const LOAD_WAIT_MS = 8000;
@@ -85,7 +87,10 @@ export function startAds(): void {
             tagForUnderAgeOfConsent: false,
           })
           .then(() => ads.default().initialize())
-          .then(load);
+          .then(() => {
+            load();
+            loadInterstitial();
+          });
       })
       .catch(() => {});
   } catch {
@@ -143,6 +148,7 @@ export async function watchRewardedAd(): Promise<AdResult> {
       const finish = (result: AdResult) => {
         if (finished) return;
         finished = true;
+        if (result !== 'unavailable') noteAdShown(sessionPacing, Date.now());
         ad.removeAllListeners();
         // The next ad is asked for as soon as this one is gone.
         current = null;

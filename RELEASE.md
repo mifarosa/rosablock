@@ -42,7 +42,11 @@ Bump `expo.version` for each release; the build number is automatic.
 - **`ADS_LIVE` is `false`**: builds show Google's labelled test ads, which is what TestFlight and
   testers should see (tapping or farming real ads can get the AdMob account limited). Set it to
   `true` only for the build that goes to the App Store.
-- The ad is offered once per game, only after game over, and only when the player taps
+- Interstitial (between games): `INTERSTITIAL_UNIT_ID` in `src/ads/adsConfig.ts` (create an
+  Interstitial unit in AdMob). Shown when a NEW game starts ("Play again", a fresh mode from the
+  menu), never for a continued game, a pause-restart or leaving. Pacing is in `src/ads/adPacing.ts`:
+  the first game of a session has none, then every 2nd new game, at least 2.5 minutes after any ad.
+- The rewarded ad is offered once per game, only after game over, and only when the player taps
   "Watch an ad to continue" (never automatically). It is not offered in Sprint.
 - Consent: `startAds` shows Google's UMP form where required and only requests ads when allowed.
   Create the message in AdMob -> Privacy & messaging (GDPR) and, for iOS, turn on the IDFA
