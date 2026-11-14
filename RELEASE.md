@@ -33,3 +33,21 @@ A build takes 30-60 minutes. The `.ipa` stays downloadable for one day; to uploa
 
 The app icon is `assets/icon.png` (1024x1024, no alpha channel: Apple rejects icons with one).
 Bump `expo.version` for each release; the build number is automatic.
+
+## Ads (AdMob)
+
+- AdMob app id (iOS): in `app.json` under the `react-native-google-mobile-ads` plugin. The Android
+  id there is still Google's test id (there is no Android app in AdMob yet).
+- Rewarded ad unit: `REWARDED_UNIT_ID` in `src/ads/adsConfig.ts`.
+- **`ADS_LIVE` is `false`**: builds show Google's labelled test ads, which is what TestFlight and
+  testers should see (tapping or farming real ads can get the AdMob account limited). Set it to
+  `true` only for the build that goes to the App Store.
+- The ad is offered once per game, only after game over, and only when the player taps
+  "Watch an ad to continue" (never automatically). It is not offered in Sprint.
+- Consent: `startAds` shows Google's UMP form where required and only requests ads when allowed.
+  Create the message in AdMob -> Privacy & messaging (GDPR) and, for iOS, turn on the IDFA
+  explainer only if you want personalized ads (requests are non-personalized today). Players in
+  regions that require it get an "Ad privacy options" button in Settings.
+- Before the App Store review: put `google.com, pub-1672861293331033, DIRECT, f08c47fec0942fa0` in
+  `app-ads.txt` on the developer website, link the app to its App Store page in AdMob, and fill
+  in App Store Connect -> App Privacy (advertising data, device ID, usage data).

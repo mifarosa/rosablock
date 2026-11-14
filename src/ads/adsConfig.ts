@@ -7,6 +7,7 @@ export const ADS_LIVE = false;
 
 /**
  * The rewarded ad unit of Rosablock in AdMob (not a secret: it is in every copy of the app).
- * Looks like `ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY`. Empty until the unit is created.
+ * The AdMob app id (`ca-app-pub-1672861293331033~9869195588`) is in app.json, under the
+ * react-native-google-mobile-ads plugin.
  */
-export const REWARDED_UNIT_ID = '';
+export const REWARDED_UNIT_ID = 'ca-app-pub-1672861293331033/6375518180';

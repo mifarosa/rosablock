@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { privacyOptionsRequired, showPrivacyOptions } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Segment from '../components/Segment';
 import ThemeBackground from '../components/ThemeBackground';
@@ -18,6 +19,18 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { theme, t, settings, update } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
+
+  // Where the law requires it, the player can reopen the ad consent choices here.
+  const [showAdPrivacy, setShowAdPrivacy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void privacyOptionsRequired().then((required) => {
+      if (alive) setShowAdPrivacy(required);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const onOff = [
     { value: true, label: t('settings.on') },
@@ -105,6 +118,19 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
         <Text style={styles.section}>{t('settings.music')}</Text>
         <Segment options={onOff} value={settings.music} onChange={(music) => update({ music })} />
+
+        {showAdPrivacy && (
+          <>
+            <Text style={styles.section}>{t('settings.adPrivacy')}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void showPrivacyOptions()}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkText}>{t('settings.adPrivacyButton')}</Text>
+            </Pressable>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -127,6 +153,15 @@ const makeStyles = (c: ThemeColors) =>
       marginBottom: 10,
     },
     hint: { color: c.textSecondary, opacity: 0.8, fontSize: 13, marginTop: 8 },
+    linkButton: {
+      backgroundColor: c.boardBg,
+      borderColor: c.border,
+      borderWidth: 2,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    linkText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
     themes: { flexDirection: 'row', gap: 10 },
     themeCard: {
       flex: 1,

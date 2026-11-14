@@ -1,5 +1,5 @@
 import { ADS_LIVE, REWARDED_UNIT_ID } from './adsConfig';
-import { getSdk } from './adsSdk';
+import { getSdk, type AdsSdk } from './adsSdk';
 
 /** How long a player waits for an ad that is still loading before it counts as not there. */
 export const LOAD_WAIT_MS = 8000;
@@ -52,23 +52,64 @@ function load(): void {
   }
 }
 
+/**
+ * Asks for consent where the law requires it (Google's UMP form, shown to users in the EEA, UK
+ * and Switzerland when it is configured in AdMob), then says whether ads may be requested.
+ */
+async function mayRequestAds(ads: AdsSdk): Promise<boolean> {
+  try {
+    await ads.AdsConsent.gatherConsent();
+  } catch {
+    // No network or no form configured: what was stored before decides below.
+  }
+  try {
+    return (await ads.AdsConsent.getConsentInfo()).canRequestAds !== false;
+  } catch {
+    return true;
+  }
+}
+
 /** Starts the ads SDK and has the first ad ready; call it once when the app opens. */
 export function startAds(): void {
   try {
     const ads = getSdk();
     if (!ads) return;
-    ads
-      .default()
-      .setRequestConfiguration({
-        maxAdContentRating: ads.MaxAdContentRating.PG,
-        tagForChildDirectedTreatment: false,
-        tagForUnderAgeOfConsent: false,
+    mayRequestAds(ads)
+      .then((allowed) => {
+        if (!allowed) return undefined;
+        return ads
+          .default()
+          .setRequestConfiguration({
+            maxAdContentRating: ads.MaxAdContentRating.PG,
+            tagForChildDirectedTreatment: false,
+            tagForUnderAgeOfConsent: false,
+          })
+          .then(() => ads.default().initialize())
+          .then(load);
       })
-      .then(() => ads.default().initialize())
-      .then(load)
       .catch(() => {});
   } catch {
     // An app without ads is still a game.
+  }
+}
+
+/** Whether the settings should offer the "ad privacy options" form (required in some regions). */
+export async function privacyOptionsRequired(): Promise<boolean> {
+  try {
+    const ads = getSdk();
+    if (!ads) return false;
+    const info = await ads.AdsConsent.getConsentInfo();
+    return info.privacyOptionsRequirementStatus === ads.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED;
+  } catch {
+    return false;
+  }
+}
+
+export async function showPrivacyOptions(): Promise<void> {
+  try {
+    await getSdk()?.AdsConsent.showPrivacyOptionsForm();
+  } catch {
+    // Nothing to show.
   }
 }
 
