@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../app/AppContext';
+import GearIcon from '../components/GearIcon';
 import ThemeBackground from '../components/ThemeBackground';
 import type { ThemeColors } from '../constants/colors';
 import { MODES, type GameMode } from '../constants/modes';
@@ -42,10 +43,16 @@ export default function HomeScreen({
         accessibilityRole="button"
         accessibilityLabel={t('home.settings')}
         onPress={onOpenSettings}
-        hitSlop={10}
-        style={[styles.gear, { top: insets.top + 12 }]}
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.gear,
+          { top: insets.top + 10 },
+          pressed && styles.gearPressed,
+        ]}
       >
-        <Text style={styles.gearText}>⚙</Text>
+        {({ pressed }) => (
+          <GearIcon color={pressed ? theme.textPrimary : theme.textSecondary} />
+        )}
       </Pressable>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>ROSABLOCK</Text>
@@ -96,8 +103,20 @@ export default function HomeScreen({
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: c.background },
-    gear: { position: 'absolute', right: 18, zIndex: 2 },
-    gearText: { color: c.textSecondary, fontSize: 26 },
+    gear: {
+      position: 'absolute',
+      right: 16,
+      zIndex: 2,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: c.boardBg,
+      borderWidth: 2,
+      borderColor: c.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gearPressed: { backgroundColor: c.border, borderColor: c.textSecondary },
     content: { padding: 20, paddingBottom: 40 },
     title: {
       color: c.textPrimary,
