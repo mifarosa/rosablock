@@ -16,6 +16,7 @@ import Board from '../components/Board';
 import Controls from '../components/Controls';
 import { Dialog, DialogButton, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
+import SwapIcon from '../components/SwapIcon';
 import ScoreBoard from '../components/ScoreBoard';
 import ThemeBackground from '../components/ThemeBackground';
 import type { ThemeColors } from '../constants/colors';
@@ -363,9 +364,11 @@ export default function GameScreen({
               accessibilityLabel={t('game.swapSide')}
               onPress={() => update({ controlSide: buttonsOnRight ? 'left' : 'right' })}
               hitSlop={8}
-              style={styles.swapButton}
+              style={({ pressed }) => [styles.swapButton, pressed && styles.swapButtonPressed]}
             >
-              <Text style={styles.swapText}>⇄</Text>
+              {({ pressed }) => (
+                <SwapIcon color={pressed ? theme.textPrimary : theme.textSecondary} />
+              )}
             </Pressable>
           )}
           <Pressable
@@ -480,7 +483,7 @@ const makeStyles = (c: ThemeColors) =>
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swapText: { color: c.textSecondary, fontSize: 15, fontWeight: '700' },
+  swapButtonPressed: { backgroundColor: c.border, borderColor: c.textSecondary },
   playfield: {
     flex: 1,
     alignItems: 'center',
