@@ -12,7 +12,7 @@ React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir T
   - **Huzur**: hızlanma yok, kendi hızında oyna; tahta dolunca biter.
   - **Ultra**: 2 dakikada olabildiğince çok puan topla.
 - **İki oynama biçimi**
-  - **Tuşsuz** (tam ekran): dokun = döndür, yana kaydır = hareket, basılı tut = yavaş in (tutarken parçanın içi alttan yukarı dolar), aşağı fiske = çat diye indir.
+  - **Tuşsuz** (tam ekran): dokun = döndür, yana kaydır = hareket, basılı tut = hızlı in (tutarken parçanın içi alttan yukarı dolar), aşağı fiske = çat diye indir.
   - **Tuşlar**: durum kutusunun yanında kompakt 2x2 tuş kümesi, tek başparmakla oynamak için; küçük ⇄ tuşu tarafları değiştirir.
 - **Gerçek Tetris kuralları**: duvar itmeli SRS döndürme, 7'li torba, gölge parça, parça tutma (parça başına bir kez), seviyeye göre yerçekimi.
 - **His**: dolan satırlar çökmeden önce parlar, 3-4 satırda tahta sarsılır, titreşim satır sayısına göre güçlenir.

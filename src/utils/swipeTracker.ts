@@ -17,7 +17,7 @@ export const MOVE_SLOP_PX = 14;
 export const TAP_MAX_MS = 350;
 /** How long a still finger must stay down before the charge starts. */
 export const HOLD_DELAY_MS = 350;
-/** How long the charge takes to fill; when it is full the soft drop starts. */
+/** How long the charge takes to fill; when it is full the fast drop starts. */
 export const CHARGE_MS = 400;
 const STEP_X_FACTOR = 0.8;
 

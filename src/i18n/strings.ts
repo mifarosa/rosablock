@@ -43,7 +43,7 @@ const tr = {
   'game.restart': 'Yeniden Başla',
   'game.mainMenu': 'Ana Menü',
   'game.hintGestures':
-    'dokun: döndür · fiske: çat diye indir · kaydır: yana · basılı tut: yavaş in',
+    'dokun: döndür · fiske: çat diye indir · kaydır: yana · basılı tut: hızlı in',
   'game.watchAd': 'Reklam izle, devam et',
   'game.adLoading': 'Reklam hazırlanıyor…',
   'game.adUnavailable': 'Şu an reklam yok, biraz sonra tekrar dene.',
@@ -76,7 +76,7 @@ const tr = {
   'settings.controls.gestures': 'Tuşsuz',
   'settings.controls.buttons': 'Tuşlar',
   'settings.controls.gesturesHint':
-    'Dokun: döndür · aşağı fiske: çat diye indir · kaydır: yana · basılı tut (dolar): yavaş in',
+    'Dokun: döndür · aşağı fiske: çat diye indir · kaydır: yana · basılı tut (dolar): hızlı in',
   'settings.controls.buttonsHint':
     'Tuşlar bir yanda, durum kutusu diğer yanda. Oyunda ⇄ ile yer değiştirir',
   'theme.rose': 'Gül',
@@ -127,7 +127,7 @@ const en: Record<StringKey, string> = {
   'game.playAgain': 'Play again',
   'game.restart': 'Restart',
   'game.mainMenu': 'Main menu',
-  'game.hintGestures': 'tap: rotate · flick down: drop · swipe: move · hold: soft drop',
+  'game.hintGestures': 'tap: rotate · flick down: drop · swipe: move · hold: fast drop',
   'game.watchAd': 'Watch an ad to continue',
   'game.adLoading': 'Loading the ad…',
   'game.adUnavailable': 'No ad right now, try again in a moment.',
@@ -160,7 +160,7 @@ const en: Record<StringKey, string> = {
   'settings.controls.gestures': 'Gestures',
   'settings.controls.buttons': 'Buttons',
   'settings.controls.gesturesHint':
-    'Tap: rotate · flick down: drop · swipe: move · hold (it fills): soft drop',
+    'Tap: rotate · flick down: drop · swipe: move · hold (it fills): fast drop',
   'settings.controls.buttonsHint':
     'Buttons on one side, status box on the other. Use ⇄ in the game to swap sides',
   'theme.rose': 'Rose',

@@ -12,7 +12,7 @@ A calm, nostalgic Tetris for iOS and Android, built with React Native (Expo). So
   - **Calm**: no speed-ups, play at your own pace; it ends when the board fills up.
   - **Ultra**: score as much as you can in 2 minutes.
 - **Two ways to play**
-  - **Gestures** (full screen): tap to rotate, drag sideways to move, hold to soft drop (a fill rises through the piece while you hold), flick down to hard drop.
+  - **Gestures** (full screen): tap to rotate, drag sideways to move, hold to drop fast (a fill rises through the piece while you hold), flick down to hard drop.
   - **Buttons**: a compact 2x2 pad next to a status box, built for one thumb; a small ⇄ button swaps the sides.
 - **Real Tetris rules**: SRS rotation with wall kicks, 7-bag randomizer, ghost piece, hold piece (once per piece), level-based gravity.
 - **Feel**: cleared rows flash before they collapse, the board shakes on a 3 or 4 line clear, haptics scale with the number of rows.

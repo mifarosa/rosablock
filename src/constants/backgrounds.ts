@@ -1,6 +1,6 @@
 // Vector backdrops for the themes, as plain data: every shape is a single SVG path with absolute
 // coordinates (no transforms), drawn on a 400 x 800 canvas that is scaled to fill the screen.
-import type { ThemeId } from './colors';
+import { THEMES, type ThemeId } from './colors';
 
 export const BACKGROUND_WIDTH = 400;
 export const BACKGROUND_HEIGHT = 800;
@@ -129,6 +129,108 @@ function mintBranch(
   return shapes;
 }
 
+/** Mixes `color` into `base`: amount 0 = base, 1 = color. Both are `#rrggbb`. */
+function mix(color: string, base: string, amount: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const out = [0, 1, 2].map((i) => {
+    const v = Math.round(channel(base, i) + (channel(color, i) - channel(base, i)) * amount);
+    return v.toString(16).padStart(2, '0');
+  });
+  return `#${out.join('')}`;
+}
+
+/**
+ * A rose seen from above: rings of petals that get smaller toward the middle, ending in a small
+ * spiral. Petals are solid colors (already blended into the backdrop, so the rose stays soft) and
+ * cover each other like real petals, with a thin lighter edge.
+ */
+function roseBloom(
+  cx: number,
+  cy: number,
+  radius: number,
+  turn: number,
+  strength: number,
+): BackgroundShape[] {
+  const back = THEMES.rose.background;
+  const place = placer(cx, cy, 0);
+  const shapes: BackgroundShape[] = [];
+  const edge = mix('#F7E8EC', back, 0.2 * strength);
+  const rings: { petals: number; dist: number; rx: number; ry: number; color: string }[] = [
+    { petals: 5, dist: 0.6, rx: 0.5, ry: 0.58, color: '#D8839F' },
+    { petals: 5, dist: 0.43, rx: 0.4, ry: 0.48, color: '#E8A5B8' },
+    { petals: 4, dist: 0.27, rx: 0.32, ry: 0.4, color: '#C97A9E' },
+    { petals: 3, dist: 0.13, rx: 0.24, ry: 0.3, color: '#B66685' },
+  ];
+  rings.forEach((ring, ringIndex) => {
+    const fill = mix(ring.color, back, 0.34 * strength);
+    for (let i = 0; i < ring.petals; i++) {
+      const angle = turn + ringIndex * 0.6 + (i * 2 * Math.PI) / ring.petals;
+      const px = Math.cos(angle) * ring.dist * radius;
+      const py = Math.sin(angle) * ring.dist * radius;
+      const rot = (angle * 180) / Math.PI + 90; // the petal's long side points away from the center
+      shapes.push({
+        d: ellipse(place, px, py, ring.rx * radius, ring.ry * radius, rot),
+        fill,
+        stroke: edge,
+        strokeWidth: 1.2,
+        opacity: 1,
+      });
+    }
+  });
+  // The heart of the rose: a small spiral.
+  let spiral = '';
+  for (let step = 0; step <= 32; step++) {
+    const t = step / 32;
+    const a = turn + t * 4.4 * Math.PI;
+    const r = radius * 0.17 * t;
+    spiral += `${step === 0 ? 'M' : 'L'}${pt(place([Math.cos(a) * r, Math.sin(a) * r]))} `;
+  }
+  shapes.push({ d: spiral.trim(), stroke: mix('#F7E8EC', back, 0.28 * strength), strokeWidth: 1.6, opacity: 1 });
+  return shapes;
+}
+
+/** A thin thorny stem with a few leaves, base at (x, y), reaching up at `angle`. */
+function roseStem(
+  x: number,
+  y: number,
+  angle: number,
+  length: number,
+  color: string,
+  opacity: number,
+): BackgroundShape[] {
+  const place = placer(x, y, angle);
+  const shapes: BackgroundShape[] = [
+    {
+      d: `M${pt(place([0, 0]))} C${pt(place([-10, -length * 0.35]))} ${pt(place([10, -length * 0.7]))} ${pt(place([0, -length]))}`,
+      stroke: color,
+      strokeWidth: 2.6,
+      opacity: opacity * 1.3,
+    },
+  ];
+  [0.28, 0.55, 0.8].forEach((t, i) => {
+    const side = i % 2 === 0 ? -1 : 1;
+    const base = placer(0, 0, side * 58);
+    const leafPlace = (q: Point): Point => place(((b): Point => [b[0], b[1] - length * t])(base(q)));
+    shapes.push(...leaf(leafPlace, 48 - i * 8, 15 - i * 2, color, color, opacity));
+  });
+  return shapes;
+}
+
+const ROSE_LEAF = '#9E4B6C';
+
+function buildRose(): BackgroundShape[] {
+  return [
+    ...roseStem(70, 840, -6, 330, ROSE_LEAF, 0.15),
+    ...roseStem(300, 850, 8, 280, ROSE_LEAF, 0.13),
+    ...roseStem(385, -20, 186, 200, ROSE_LEAF, 0.12),
+    ...roseBloom(58, 520, 66, 0.2, 1),
+    ...roseBloom(318, 600, 50, 1.1, 0.9),
+    ...roseBloom(366, 170, 60, 0.6, 1),
+    ...roseBloom(24, 790, 44, 2.0, 0.85),
+    ...roseBloom(176, 772, 36, 0.9, 0.8),
+  ];
+}
+
 const LAVENDER_COLORS = ['#C4B3F0', '#A98EE2', '#8B74BF'] as const;
 const MINT_COLORS = ['#A9E1CA', '#6DB499', '#58998A'] as const;
 
@@ -156,12 +258,12 @@ function buildMint(): BackgroundShape[] {
 
 const cache: Partial<Record<ThemeId, BackgroundShape[]>> = {};
 
-/** The shapes of a theme's backdrop (empty for themes without one). */
+/** The shapes of a theme's backdrop. */
 export function backgroundShapes(theme: ThemeId): BackgroundShape[] {
-  if (theme === 'rose') return [];
   const cached = cache[theme];
   if (cached) return cached;
-  const built = theme === 'lavender' ? buildLavender() : buildMint();
+  const built =
+    theme === 'rose' ? buildRose() : theme === 'lavender' ? buildLavender() : buildMint();
   cache[theme] = built;
   return built;
 }

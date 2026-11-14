@@ -20,12 +20,16 @@ interface GestureAreaProps {
   cellSize: number;
   onLeft: () => void;
   onRight: () => void;
-  onSoftDrop: () => void;
+  /**
+   * One tick of the held-down drop. Returns true when the piece landed: the drop then waits until
+   * the finger is lifted and pressed again, so it does not carry on into the next piece.
+   */
+  onHoldDrop: () => boolean;
   /** A quick tap. */
   onTap: () => void;
   /** A fast flick downwards. */
   onFlick: () => void;
-  /** The hold charge just became full and the soft drop starts. */
+  /** The hold charge just became full and the fast drop starts. */
   onHoldStart: () => void;
   /** 0 to 1 while the hold charges; the board draws it inside the falling piece. */
   charge: Animated.Value;
@@ -33,14 +37,14 @@ interface GestureAreaProps {
   children?: React.ReactNode;
 }
 
-const HOLD_REPEAT_MS = 45;
+const HOLD_REPEAT_MS = 40;
 
 /** Full-area touch surface for the buttonless control mode. */
 export default function GestureArea({
   cellSize,
   onLeft,
   onRight,
-  onSoftDrop,
+  onHoldDrop,
   onTap,
   onFlick,
   onHoldStart,
@@ -49,8 +53,8 @@ export default function GestureArea({
   children,
 }: GestureAreaProps) {
   // Latest callbacks live in a ref: the PanResponder is created once and must never go stale.
-  const handlers = useRef({ onLeft, onRight, onSoftDrop, onTap, onFlick, onHoldStart });
-  handlers.current = { onLeft, onRight, onSoftDrop, onTap, onFlick, onHoldStart };
+  const handlers = useRef({ onLeft, onRight, onHoldDrop, onTap, onFlick, onHoldStart });
+  handlers.current = { onLeft, onRight, onHoldDrop, onTap, onFlick, onHoldStart };
 
   const tracker = useRef<SwipeTracker | null>(null);
   if (tracker.current === null) {
@@ -66,7 +70,7 @@ export default function GestureArea({
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const chargeAnim = useRef<Animated.CompositeAnimation | null>(null);
 
-  /** Stops the charge and the soft drop and empties the indicator. */
+  /** Stops the charge and the fast drop and empties the indicator. */
   const reset = useRef(() => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     if (holdInterval.current) clearInterval(holdInterval.current);
@@ -85,7 +89,7 @@ export default function GestureArea({
         const t = tracker.current!;
         t.start(Date.now());
         reset();
-        // A still finger that stays down starts to charge the indicator, then soft drops.
+        // A still finger that stays down starts to charge the indicator, then drops fast.
         holdTimer.current = setTimeout(() => {
           if (t.hasMoved()) return;
           const anim = Animated.timing(charge, {
@@ -98,14 +102,20 @@ export default function GestureArea({
           anim.start(({ finished }) => {
             if (!finished || !t.beginHold()) return;
             handlers.current.onHoldStart();
-            holdInterval.current = setInterval(() => handlers.current.onSoftDrop(), HOLD_REPEAT_MS);
+            holdInterval.current = setInterval(() => {
+              if (!handlers.current.onHoldDrop()) return;
+              // Landed: stop dropping and empty the indicator until the next press.
+              if (holdInterval.current) clearInterval(holdInterval.current);
+              holdInterval.current = null;
+              charge.setValue(0);
+            }, HOLD_REPEAT_MS);
           });
         }, HOLD_DELAY_MS);
       },
       onPanResponderMove: (_evt, g) => {
         const t = tracker.current!;
         t.move(g.dx, g.dy);
-        // Sliding sideways while the charge is still filling cancels it; once the soft drop has
+        // Sliding sideways while the charge is still filling cancels it; once the fast drop has
         // begun, sliding keeps working along with it.
         if (t.hasMoved() && !t.isHolding() && chargeAnim.current) reset();
       },

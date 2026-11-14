@@ -253,12 +253,21 @@ export function stepDown(state: GameState): GameState {
   return { ...state, piece: { ...p, row: p.row + 1 } };
 }
 
-/** Player-driven soft drop: +1 point per row. Does not lock (gravity does). */
-export function softDrop(state: GameState): GameState {
+/**
+ * One step of a held-down drop: moves the piece down a row (+1 point), or, when it is resting on
+ * something, locks it. `locked` tells the caller so a held finger does not carry on into the
+ * next piece.
+ */
+export function fastDropStep(state: GameState): { state: GameState; locked: boolean } {
   const p = state.piece;
-  if (state.status !== 'playing' || !p) return state;
-  if (collides(state.grid, p.type, p.rotation, p.row + 1, p.col)) return state;
-  return { ...state, score: state.score + 1, piece: { ...p, row: p.row + 1 } };
+  if (state.status !== 'playing' || !p) return { state, locked: false };
+  if (collides(state.grid, p.type, p.rotation, p.row + 1, p.col)) {
+    return { state: lockPiece(state, p, 0), locked: true };
+  }
+  return {
+    state: { ...state, score: state.score + 1, piece: { ...p, row: p.row + 1 } },
+    locked: false,
+  };
 }
 
 /** Instantly drops and locks the piece: +2 points per row travelled. */
@@ -347,7 +356,8 @@ export interface TetrisApi {
   rotateCCW: () => void;
   hold: () => void;
   revive: () => void;
-  softDrop: () => void;
+  /** Drops `rows` rows (default 1); returns true if the piece landed during it. */
+  fastDrop: (rows?: number) => boolean;
   hardDrop: () => void;
   togglePause: () => void;
   restart: () => void;
@@ -418,7 +428,22 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
   const rotateCCW = useCallback(() => commit((s) => rotatePiece(s, -1)), [commit]);
   const holdAction = useCallback(() => commit(holdPiece), [commit]);
   const reviveAction = useCallback(() => commit(revive), [commit]);
-  const softDropAction = useCallback(() => commit(softDrop), [commit]);
+  const fastDropAction = useCallback(
+    (rows = 1): boolean => {
+      let landed = false;
+      commit((s) => {
+        let current = s;
+        for (let i = 0; i < rows && !landed; i++) {
+          const step = fastDropStep(current);
+          current = step.state;
+          landed = step.locked;
+        }
+        return current;
+      });
+      return landed;
+    },
+    [commit],
+  );
   const hardDropAction = useCallback(() => commit(hardDrop), [commit]);
   const togglePauseAction = useCallback(() => commit(togglePause), [commit]);
 
@@ -439,7 +464,7 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
     rotateCCW,
     hold: holdAction,
     revive: reviveAction,
-    softDrop: softDropAction,
+    fastDrop: fastDropAction,
     hardDrop: hardDropAction,
     togglePause: togglePauseAction,
     restart,

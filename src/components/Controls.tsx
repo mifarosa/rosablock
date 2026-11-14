@@ -6,20 +6,24 @@ import type { ThemeColors } from '../constants/colors';
 interface ControlsProps {
   onLeft: () => void;
   onRight: () => void;
-  onSoftDrop: () => void;
+  /** Returns true when the piece landed, which also stops the repeat. */
+  onSoftDrop: () => boolean;
   onRotate: () => void;
   height: number;
 }
 
 const REPEAT_DELAY_MS = 170;
 const REPEAT_INTERVAL_MS = 55;
+const DOWN_REPEAT_INTERVAL_MS = 35;
 const GAP = 8;
 
 interface PadButtonProps {
   label: string;
   accessibilityLabel: string;
-  onPress: () => void;
+  /** Returning true stops the repeat (the press has to be released and made again). */
+  onPress: () => boolean | void;
   repeat?: boolean;
+  repeatMs?: number;
 }
 
 /** Retro pad button. With `repeat`, holding the button fires the action repeatedly (DAS-style). */
@@ -28,6 +32,7 @@ const PadButton = memo(function PadButton({
   accessibilityLabel,
   onPress,
   repeat = false,
+  repeatMs = REPEAT_INTERVAL_MS,
 }: PadButtonProps) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -42,13 +47,14 @@ const PadButton = memo(function PadButton({
   }, []);
 
   const start = useCallback(() => {
-    onPress();
-    if (!repeat) return;
     stop();
+    if (onPress() === true || !repeat) return;
     delayRef.current = setTimeout(() => {
-      intervalRef.current = setInterval(onPress, REPEAT_INTERVAL_MS);
+      intervalRef.current = setInterval(() => {
+        if (onPress() === true) stop();
+      }, repeatMs);
     }, REPEAT_DELAY_MS);
-  }, [onPress, repeat, stop]);
+  }, [onPress, repeat, repeatMs, stop]);
 
   useEffect(() => stop, [stop]);
 
@@ -77,7 +83,13 @@ function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsPro
     <View style={[styles.cluster, { height }]}>
       <View style={styles.row}>
         <PadButton label="↻" accessibilityLabel={t('a11y.rotate')} onPress={onRotate} />
-        <PadButton label="▼" accessibilityLabel={t('a11y.down')} onPress={onSoftDrop} repeat />
+        <PadButton
+          label="▼"
+          accessibilityLabel={t('a11y.down')}
+          onPress={onSoftDrop}
+          repeat
+          repeatMs={DOWN_REPEAT_INTERVAL_MS}
+        />
       </View>
       <View style={styles.row}>
         <PadButton label="◀" accessibilityLabel={t('a11y.left')} onPress={onLeft} repeat />

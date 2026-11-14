@@ -204,6 +204,18 @@ export default function GameScreen({
   }, [settings.music, state.status]);
   useEffect(() => pauseMusic, []);
 
+  // Held-down drops go two rows per tick (fast), and a landing locks the piece at once.
+  const holdDrop = () => {
+    const landed = game.fastDrop(2);
+    if (landed) dropHaptic();
+    return landed;
+  };
+  const buttonDrop = () => {
+    const landed = game.fastDrop(1);
+    if (landed) dropHaptic();
+    return landed;
+  };
+
   const moveLeft = () => {
     game.moveLeft();
     playSound('move');
@@ -321,7 +333,7 @@ export default function GameScreen({
       <Controls
         onLeft={moveLeft}
         onRight={moveRight}
-        onSoftDrop={game.softDrop}
+        onSoftDrop={buttonDrop}
         onRotate={rotate}
         height={PANEL_HEIGHT}
       />
@@ -374,7 +386,7 @@ export default function GameScreen({
           cellSize={cellSize}
           onLeft={moveLeft}
           onRight={moveRight}
-          onSoftDrop={game.softDrop}
+          onHoldDrop={holdDrop}
           onTap={rotate}
           onFlick={hardDrop}
           onHoldStart={chargeHaptic}
