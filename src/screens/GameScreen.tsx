@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  AppState,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
@@ -15,9 +23,14 @@ import type { StringKey } from '../i18n/strings';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { canRevive, useTetris, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
-import { hitsGhost } from '../utils/ghostHit';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
-import { dropHaptic, finishHaptic, gameOverHaptic, lineClearHaptic } from '../utils/haptics';
+import {
+  chargeHaptic,
+  dropHaptic,
+  finishHaptic,
+  gameOverHaptic,
+  lineClearHaptic,
+} from '../utils/haptics';
 import { pauseMusic, playSound, startMusic } from '../utils/sound';
 import { saveResult, type HighScores } from '../utils/storage';
 
@@ -68,7 +81,6 @@ export default function GameScreen({
     12,
     Math.floor(Math.min(availableWidth / BOARD_COLS, availableHeight / BOARD_ROWS, 44)),
   );
-  const boardWidth = cellSize * BOARD_COLS + BOARD_BORDER * 2;
 
   const ended = state.status === 'over' || state.status === 'finished';
 
@@ -262,16 +274,8 @@ export default function GameScreen({
     }
   };
 
-  // Gestures mode: a tap on the landing shadow drops the piece, a tap anywhere else rotates it.
-  // The touch area spans the full width and the board is centered in it, SECTION_GAP from the top.
-  const handleTap = (x: number, y: number) => {
-    const boardLeft = (width - boardWidth) / 2;
-    if (hitsGhost(x, y, state.piece, game.ghostRow, cellSize, boardLeft, SECTION_GAP)) {
-      hardDrop();
-    } else {
-      rotate();
-    }
-  };
+  // The hold-to-drop charge, drawn inside the falling piece (0 to 1, driven by the touch area).
+  const charge = useRef(new Animated.Value(0)).current;
 
   const board = (
     <Board
@@ -280,6 +284,7 @@ export default function GameScreen({
       ghostRow={game.ghostRow}
       cellSize={cellSize}
       clearingRows={clearingRows}
+      charge={charge}
     />
   );
 
@@ -359,7 +364,10 @@ export default function GameScreen({
           onLeft={moveLeft}
           onRight={moveRight}
           onSoftDrop={game.softDrop}
-          onTap={handleTap}
+          onTap={rotate}
+          onFlick={hardDrop}
+          onHoldStart={chargeHaptic}
+          charge={charge}
           style={styles.playfield}
         >
           {board}

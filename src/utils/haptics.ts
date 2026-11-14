@@ -42,3 +42,8 @@ export function gameOverHaptic(): void {
 export function finishHaptic(): void {
   notify(Haptics.NotificationFeedbackType.Success);
 }
+
+/** A light tick when the hold charge is full and the piece starts to soft drop. */
+export function chargeHaptic(): void {
+  impact(Haptics.ImpactFeedbackStyle.Light);
+}

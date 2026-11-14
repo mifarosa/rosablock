@@ -1,21 +1,34 @@
 import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   PanResponder,
   StyleSheet,
   View,
-  type HostInstance,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { HOLD_DELAY_MS, SwipeTracker, type SwipeActions } from '../utils/swipeTracker';
+import {
+  CHARGE_MS,
+  HOLD_DELAY_MS,
+  SwipeTracker,
+  isFlickDown,
+  type SwipeActions,
+} from '../utils/swipeTracker';
 
 interface GestureAreaProps {
   cellSize: number;
   onLeft: () => void;
   onRight: () => void;
   onSoftDrop: () => void;
-  /** A tap, with its position relative to this area's top-left corner. */
-  onTap: (x: number, y: number) => void;
+  /** A quick tap. */
+  onTap: () => void;
+  /** A fast flick downwards. */
+  onFlick: () => void;
+  /** The hold charge just became full and the soft drop starts. */
+  onHoldStart: () => void;
+  /** 0 to 1 while the hold charges; the board draws it inside the falling piece. */
+  charge: Animated.Value;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }
@@ -29,76 +42,89 @@ export default function GestureArea({
   onRight,
   onSoftDrop,
   onTap,
+  onFlick,
+  onHoldStart,
+  charge,
   style,
   children,
 }: GestureAreaProps) {
   // Latest callbacks live in a ref: the PanResponder is created once and must never go stale.
-  const handlers = useRef({ onLeft, onRight, onSoftDrop, onTap });
-  handlers.current = { onLeft, onRight, onSoftDrop, onTap };
+  const handlers = useRef({ onLeft, onRight, onSoftDrop, onTap, onFlick, onHoldStart });
+  handlers.current = { onLeft, onRight, onSoftDrop, onTap, onFlick, onHoldStart };
 
   const tracker = useRef<SwipeTracker | null>(null);
   if (tracker.current === null) {
     const actions: SwipeActions = {
       left: () => handlers.current.onLeft(),
       right: () => handlers.current.onRight(),
-      down: () => handlers.current.onSoftDrop(),
     };
     tracker.current = new SwipeTracker(cellSize, actions);
   }
   tracker.current.cellSize = cellSize;
 
-  const viewRef = useRef<HostInstance>(null);
-  const origin = useRef<{ x: number; y: number } | null>(null);
-  const touchStart = useRef({ pageX: 0, pageY: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chargeAnim = useRef<Animated.CompositeAnimation | null>(null);
 
-  const clearTimers = useRef(() => {
+  /** Stops the charge and the soft drop and empties the indicator. */
+  const reset = useRef(() => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     if (holdInterval.current) clearInterval(holdInterval.current);
     holdTimer.current = null;
     holdInterval.current = null;
+    chargeAnim.current?.stop();
+    chargeAnim.current = null;
+    charge.setValue(0);
   }).current;
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: (evt) => {
+      onPanResponderGrant: () => {
         const t = tracker.current!;
         t.start(Date.now());
-        touchStart.current = { pageX: evt.nativeEvent.pageX, pageY: evt.nativeEvent.pageY };
-        // The area's position on screen, to turn the tap's page coordinates into local ones.
-        viewRef.current?.measureInWindow((x, y) => {
-          origin.current = { x, y };
-        });
-        clearTimers();
+        reset();
+        // A still finger that stays down starts to charge the indicator, then soft drops.
         holdTimer.current = setTimeout(() => {
-          if (t.beginHold()) {
-            holdInterval.current = setInterval(
-              () => handlers.current.onSoftDrop(),
-              HOLD_REPEAT_MS,
-            );
-          }
+          if (t.hasMoved()) return;
+          const anim = Animated.timing(charge, {
+            toValue: 1,
+            duration: CHARGE_MS,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          });
+          chargeAnim.current = anim;
+          anim.start(({ finished }) => {
+            if (!finished || !t.beginHold()) return;
+            handlers.current.onHoldStart();
+            holdInterval.current = setInterval(() => handlers.current.onSoftDrop(), HOLD_REPEAT_MS);
+          });
         }, HOLD_DELAY_MS);
       },
-      onPanResponderMove: (_evt, g) => tracker.current!.move(g.dx, g.dy),
-      onPanResponderRelease: () => {
-        const tap = tracker.current!.end(Date.now());
-        clearTimers();
-        const o = origin.current;
-        if (tap && o) {
-          handlers.current.onTap(touchStart.current.pageX - o.x, touchStart.current.pageY - o.y);
-        }
+      onPanResponderMove: (_evt, g) => {
+        const t = tracker.current!;
+        t.move(g.dx, g.dy);
+        // Sliding sideways while the charge is still filling cancels it; once the soft drop has
+        // begun, sliding keeps working along with it.
+        if (t.hasMoved() && !t.isHolding() && chargeAnim.current) reset();
       },
-      onPanResponderTerminate: clearTimers,
+      onPanResponderRelease: (_evt, g) => {
+        const t = tracker.current!;
+        const tap = t.end(Date.now());
+        const flick = !tap && !t.isHolding() && isFlickDown(g.dx, g.dy, g.vy);
+        reset();
+        if (tap) handlers.current.onTap();
+        else if (flick) handlers.current.onFlick();
+      },
+      onPanResponderTerminate: () => reset(),
     }),
   ).current;
 
-  useEffect(() => clearTimers, [clearTimers]);
+  useEffect(() => reset, [reset]);
 
   return (
-    <View ref={viewRef} collapsable={false} style={[styles.area, style]} {...panResponder.panHandlers}>
+    <View style={[styles.area, style]} {...panResponder.panHandlers}>
       {children}
     </View>
   );
