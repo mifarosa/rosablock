@@ -73,14 +73,18 @@ const PadButton = memo(function PadButton({
 
 /**
  * A compact 2x2 cluster meant for one thumb:
- *   ↻  ▼
  *   ◀  ▶
+ *   ↻  ▼
  */
 function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsProps) {
   const { theme, t } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={[styles.cluster, { height }]}>
+      <View style={styles.row}>
+        <PadButton label="◀" accessibilityLabel={t('a11y.left')} onPress={onLeft} repeat />
+        <PadButton label="▶" accessibilityLabel={t('a11y.right')} onPress={onRight} repeat />
+      </View>
       <View style={styles.row}>
         <PadButton label="↻" accessibilityLabel={t('a11y.rotate')} onPress={onRotate} />
         <PadButton
@@ -90,10 +94,6 @@ function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsPro
           repeat
           repeatMs={DOWN_REPEAT_INTERVAL_MS}
         />
-      </View>
-      <View style={styles.row}>
-        <PadButton label="◀" accessibilityLabel={t('a11y.left')} onPress={onLeft} repeat />
-        <PadButton label="▶" accessibilityLabel={t('a11y.right')} onPress={onRight} repeat />
       </View>
     </View>
   );
