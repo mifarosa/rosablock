@@ -43,7 +43,7 @@ export function finishHaptic(): void {
   notify(Haptics.NotificationFeedbackType.Success);
 }
 
-/** A light tick when the hold charge is full and the piece starts to drop fast. */
+/** A light tick when the hold charge is full and the piece starts to drop. */
 export function chargeHaptic(): void {
   impact(Haptics.ImpactFeedbackStyle.Light);
 }

@@ -1,27 +1,31 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../app/AppContext';
+import { DropRamp } from '../utils/dropRamp';
 import type { ThemeColors } from '../constants/colors';
 
 interface ControlsProps {
   onLeft: () => void;
   onRight: () => void;
-  /** Returns true when the piece landed, which also stops the repeat. */
-  onSoftDrop: () => boolean;
+  /** Drops this many rows; returns true when the piece landed, which also stops the repeat. */
+  onSoftDrop: (rows: number) => boolean;
   onRotate: () => void;
   height: number;
 }
 
 const REPEAT_DELAY_MS = 170;
 const REPEAT_INTERVAL_MS = 55;
-const DOWN_REPEAT_INTERVAL_MS = 35;
+const DOWN_REPEAT_INTERVAL_MS = 30;
 const GAP = 8;
 
 interface PadButtonProps {
   label: string;
   accessibilityLabel: string;
-  /** Returning true stops the repeat (the press has to be released and made again). */
-  onPress: () => boolean | void;
+  /**
+   * `repeat` is false for the press itself and true for the ticks that follow while it is held.
+   * Returning true stops the repeat (the press has to be released and made again).
+   */
+  onPress: (repeat: boolean) => boolean | void;
   repeat?: boolean;
   repeatMs?: number;
 }
@@ -48,10 +52,10 @@ const PadButton = memo(function PadButton({
 
   const start = useCallback(() => {
     stop();
-    if (onPress() === true || !repeat) return;
+    if (onPress(false) === true || !repeat) return;
     delayRef.current = setTimeout(() => {
       intervalRef.current = setInterval(() => {
-        if (onPress() === true) stop();
+        if (onPress(true) === true) stop();
       }, repeatMs);
     }, REPEAT_DELAY_MS);
   }, [onPress, repeat, repeatMs, stop]);
@@ -79,6 +83,18 @@ const PadButton = memo(function PadButton({
 function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsProps) {
   const { theme, t } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  // Holding ▼ speeds up like the hold-to-drop gesture: one row for the press, then a ramp.
+  const ramp = useRef(new DropRamp()).current;
+  const onDown = (repeat: boolean): boolean => {
+    if (!repeat) {
+      ramp.reset();
+      return onSoftDrop(ramp.step(Date.now())); // the press itself: one row
+    }
+    const rows = ramp.step(Date.now());
+    return rows > 0 ? onSoftDrop(rows) : false;
+  };
+
   return (
     <View style={[styles.cluster, { height }]}>
       <View style={styles.row}>
@@ -90,7 +106,7 @@ function Controls({ onLeft, onRight, onSoftDrop, onRotate, height }: ControlsPro
         <PadButton
           label="▼"
           accessibilityLabel={t('a11y.down')}
-          onPress={onSoftDrop}
+          onPress={onDown}
           repeat
           repeatMs={DOWN_REPEAT_INTERVAL_MS}
         />
