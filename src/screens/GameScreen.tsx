@@ -13,6 +13,7 @@ import { maybeShowInterstitial } from '../ads/interstitial';
 import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
+import ClearToast from '../components/ClearToast';
 import Controls from '../components/Controls';
 import { Dialog, DialogButton, DialogSwitch, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
@@ -23,7 +24,7 @@ import type { ThemeColors } from '../constants/colors';
 import type { GameMode } from '../constants/modes';
 import type { StringKey } from '../i18n/strings';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
-import { canRevive, useTetris, type GameState } from '../hooks/useTetris';
+import { canRevive, upcoming, useTetris, type ClearInfo, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
 import {
@@ -48,9 +49,8 @@ interface GameScreenProps {
 const SCREEN_PADDING = 12;
 const HEADER_HEIGHT = 48;
 const SECTION_GAP = 8;
-const PANEL_HEIGHT = 140; // buttons mode: status box + button cluster, side by side
-const BAR_HEIGHT = 50; // gestures mode: one-row status bar under the board
-const HINT_HEIGHT = 30; // gestures mode: hint line under the bar
+const PANEL_HEIGHT = 168; // buttons mode: status box + button cluster, side by side
+const BAR_HEIGHT = 88; // gestures mode: status grid (two rows) under the board
 const BOARD_BORDER = 2;
 
 export default function GameScreen({
@@ -74,7 +74,7 @@ export default function GameScreen({
   // The board sits at the top; it is as big as the width or the remaining height allows.
   const bottomPad = Math.max(insets.bottom, 12);
   const belowBoard = gestures
-    ? SECTION_GAP + BAR_HEIGHT + HINT_HEIGHT
+    ? SECTION_GAP + BAR_HEIGHT
     : SECTION_GAP + PANEL_HEIGHT;
   const reservedHeight =
     insets.top + HEADER_HEIGHT + SECTION_GAP + BOARD_BORDER * 2 + belowBoard + bottomPad;
@@ -84,8 +84,33 @@ export default function GameScreen({
     12,
     Math.floor(Math.min(availableWidth / BOARD_COLS, availableHeight / BOARD_ROWS, 44)),
   );
+  const boardHeight = cellSize * BOARD_ROWS + BOARD_BORDER * 2;
 
   const ended = state.status === 'over' || state.status === 'finished';
+
+  // After a loss the board fills with a haze first; the dialog follows a moment later.
+  const [endReady, setEndReady] = useState(false);
+  useEffect(() => {
+    if (state.status === 'over') {
+      const id = setTimeout(() => setEndReady(true), 1000);
+      return () => clearTimeout(id);
+    }
+    setEndReady(state.status === 'finished');
+    return undefined;
+  }, [state.status]);
+
+  // The pop-up for the latest line clear (it shows once per clear).
+  const [toast, setToast] = useState<ClearInfo | null>(null);
+  useEffect(() => {
+    const clear = state.lastClear;
+    if (!clear) {
+      setToast(null);
+      return undefined;
+    }
+    setToast(clear);
+    const id = setTimeout(() => setToast(null), 1250);
+    return () => clearTimeout(id);
+  }, [state.lastClear]);
 
   // Autosave: whenever a piece lands or lines clear, and when the game pauses (that includes
   // going to the background). A finished or still-untouched game leaves no save behind.
@@ -303,17 +328,18 @@ export default function GameScreen({
       ghostRow={game.ghostRow}
       cellSize={cellSize}
       clearingRows={clearingRows}
+      gameOver={state.status === 'over'}
     />
   );
 
-  const status = (layout: 'bar' | 'box', boxHeight: number) => (
+  const status = (layout: 'wide' | 'box', boxHeight: number) => (
     <ScoreBoard
       mode={mode}
       score={state.score}
       lines={state.lines}
       level={state.level}
       elapsedMs={state.elapsedMs}
-      next={state.next}
+      upcoming={upcoming(state)}
       held={state.held}
       holdUsed={state.holdUsed}
       onHold={holdPiece}
@@ -390,8 +416,7 @@ export default function GameScreen({
           style={styles.playfield}
         >
           {board}
-          <View style={styles.barWrap}>{status('bar', BAR_HEIGHT)}</View>
-          <Text style={styles.hint}>{t('game.hintGestures')}</Text>
+          <View style={styles.barWrap}>{status('wide', BAR_HEIGHT)}</View>
         </GestureArea>
       ) : (
         <>
@@ -412,6 +437,18 @@ export default function GameScreen({
         </>
       )}
 
+      {toast && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.toastWrap,
+            { top: insets.top + HEADER_HEIGHT + SECTION_GAP + boardHeight * 0.3 },
+          ]}
+        >
+          <ClearToast key={toast.id} info={toast} />
+        </View>
+      )}
+
       {countdown !== null && (
         <View style={styles.countdownOverlay} pointerEvents="none">
           <Text style={styles.countdownText}>{countdown}</Text>
@@ -424,7 +461,7 @@ export default function GameScreen({
         </View>
       )}
 
-      {(showPauseDialog || ended) && !showHowTo && (
+      {(showPauseDialog || (ended && endReady)) && !showHowTo && (
         <Dialog title={showPauseDialog ? t('game.paused') : endTitle}>
           {ended && (
             <View style={styles.summary}>
@@ -505,15 +542,8 @@ const makeStyles = (c: ThemeColors) =>
     alignItems: 'center',
     paddingTop: SECTION_GAP,
   },
-  barWrap: { alignSelf: 'stretch', marginTop: SECTION_GAP },
-  hint: {
-    color: c.textSecondary,
-    opacity: 0.55,
-    fontSize: 11,
-    marginTop: 8,
-    paddingHorizontal: SCREEN_PADDING,
-    textAlign: 'center',
-  },
+  barWrap: { alignSelf: 'stretch', marginTop: SECTION_GAP, paddingHorizontal: SCREEN_PADDING },
+  toastWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   panel: {
     flexDirection: 'row',
     gap: 10,

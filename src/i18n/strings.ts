@@ -42,8 +42,6 @@ const tr = {
   'game.playAgain': 'Tekrar Oyna',
   'game.restart': 'Yeniden Başla',
   'game.mainMenu': 'Ana Menü',
-  'game.hintGestures':
-    'dokun: döndür · fiske: çat diye indir · kaydır: yana · basılı tut: hızlanarak in',
   'game.watchAd': 'Reklam izle, devam et',
   'game.adLoading': 'Reklam hazırlanıyor…',
   'game.adUnavailable': 'Şu an reklam yok, biraz sonra tekrar dene.',
@@ -175,7 +173,6 @@ const en: Record<StringKey, string> = {
   'game.playAgain': 'Play again',
   'game.restart': 'Restart',
   'game.mainMenu': 'Main menu',
-  'game.hintGestures': 'tap: rotate · flick down: drop · swipe: move · hold: speed down',
   'game.watchAd': 'Watch an ad to continue',
   'game.adLoading': 'Loading the ad…',
   'game.adUnavailable': 'No ad right now, try again in a moment.',

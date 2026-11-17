@@ -17,50 +17,63 @@ interface ScoreBoardProps {
   lines: number;
   level: number;
   elapsedMs: number;
-  next: TetrominoType;
+  /** The pieces coming up, the next one first (three are shown). */
+  upcoming: TetrominoType[];
   held: TetrominoType | null;
   /** Hold was already used for this piece. */
   holdUsed: boolean;
   onHold: () => void;
-  /** 'bar': one row of tiles. 'box': a two-column block that fits beside the buttons. */
-  layout: 'bar' | 'box';
+  /** 'box': two columns, beside the buttons. 'wide': three columns in two rows, under the board. */
+  layout: 'box' | 'wide';
   height: number;
 }
 
-const PREVIEW_CELL = 12;
-const PREVIEW_ROWS = 2; // every piece fits in 2 rows once trimmed (I is 1 row)
 const TILE_GAP = 6;
+const GAP_PERCENT = 1.5;
 
-/** A small piece preview: the shape's bounding box is trimmed so it is always centered. */
-function PiecePreview({ type, dim = false }: { type: TetrominoType | null; dim?: boolean }) {
+/** Piece previews: the shape's bounding box is trimmed so it is always centered. */
+function Pieces({
+  types,
+  cell,
+  dimmed = false,
+}: {
+  types: (TetrominoType | null)[];
+  cell: number;
+  dimmed?: boolean;
+}) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  if (type === null) return <View style={styles.previewBox} />;
-
-  const matrix = getMatrix(type, 0).filter((row) => row.some((v) => v === 1));
-  const usedCols = matrix[0]!.map((_, c) => c).filter((c) => matrix.some((row) => row[c] === 1));
-  const minCol = Math.min(...usedCols);
-  const maxCol = Math.max(...usedCols);
-
   return (
-    <View style={[styles.previewBox, dim && styles.dim]}>
-      {matrix.map((row, r) => (
-        <View key={r} style={styles.previewRow}>
-          {row.slice(minCol, maxCol + 1).map((v, c) => (
-            <View
-              key={c}
-              style={{
-                width: PREVIEW_CELL,
-                height: PREVIEW_CELL,
-                backgroundColor: v ? theme.pieces[type] : 'transparent',
-                borderRadius: 2,
-                borderWidth: v ? 1 : 0,
-                borderColor: 'rgba(247, 232, 236, 0.22)',
-              }}
-            />
-          ))}
-        </View>
-      ))}
+    <View style={[styles.pieces, { height: cell * 2 }, dimmed && styles.dim]}>
+      {types.map((type, index) => {
+        if (type === null) return <View key={index} />;
+        const matrix = getMatrix(type, 0).filter((row) => row.some((v) => v === 1));
+        const usedCols = matrix[0]!.map((_, c) => c).filter((c) => matrix.some((row) => row[c] === 1));
+        const minCol = Math.min(...usedCols);
+        const maxCol = Math.max(...usedCols);
+        // The first piece is the one that comes next; the later ones are a little fainter.
+        return (
+          <View key={index} style={{ opacity: index === 0 ? 1 : 1 - index * 0.28 }}>
+            {matrix.map((row, r) => (
+              <View key={r} style={styles.previewRow}>
+                {row.slice(minCol, maxCol + 1).map((v, c) => (
+                  <View
+                    key={c}
+                    style={{
+                      width: cell,
+                      height: cell,
+                      backgroundColor: v ? theme.pieces[type] : 'transparent',
+                      borderRadius: 2,
+                      borderWidth: v ? 1 : 0,
+                      borderColor: 'rgba(247, 232, 236, 0.22)',
+                    }}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -68,11 +81,11 @@ function PiecePreview({ type, dim = false }: { type: TetrominoType | null; dim?:
 interface Tile {
   key: string;
   label: string;
+  span: number;
   value?: string;
-  piece?: TetrominoType | null;
+  pieces?: (TetrominoType | null)[];
   dim?: boolean;
   onPress?: () => void;
-  grow: number; // relative width in the one-row bar
 }
 
 function ScoreBoard({
@@ -81,7 +94,7 @@ function ScoreBoard({
   lines,
   level,
   elapsedMs,
-  next,
+  upcoming,
   held,
   holdUsed,
   onHold,
@@ -102,31 +115,57 @@ function ScoreBoard({
   if (mode === 'sprint') linesValue = `${lines}/${SPRINT_TARGET_LINES}`;
   if (mode === 'marathon') linesValue = `${lines}/${MARATHON_TARGET_LINES}`;
 
-  const tiles: Tile[] = [
-    { key: 'next', label: t('stat.next'), piece: next, grow: 1.1 },
-    { key: 'hold', label: t('stat.hold'), piece: held, dim: holdUsed, onPress: onHold, grow: 1 },
-    { key: 'score', label: t('stat.score'), value: String(score), grow: 1.3 },
-    { key: 'lines', label: t('stat.lines'), value: linesValue, grow: 1.2 },
-  ];
-  if (mode !== 'zen') tiles.push({ key: 'level', label: t('stat.level'), value: String(level), grow: 0.9 });
-  tiles.push({ key: 'time', label: timeLabel, value: timeValue, grow: 1.6 });
+  const wide = layout === 'wide';
+  const columns = wide ? 3 : 2;
 
-  const isBox = layout === 'box';
-  const rows = Math.ceil(tiles.length / 2);
-  const tileHeight = isBox ? (height - TILE_GAP * (rows - 1)) / rows : height;
+  // Tiles in reading order; a tile's `span` is how many columns it takes.
+  const tiles: Tile[] = wide
+    ? [
+        { key: 'next', label: t('stat.next'), span: 1, pieces: upcoming },
+        { key: 'hold', label: t('stat.hold'), span: 1, pieces: [held], dim: holdUsed, onPress: onHold },
+        { key: 'time', label: timeLabel, span: 1, value: timeValue },
+        { key: 'score', label: t('stat.score'), span: 1, value: String(score) },
+        { key: 'lines', label: t('stat.lines'), span: mode === 'zen' ? 2 : 1, value: linesValue },
+        ...(mode === 'zen' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
+      ]
+    : [
+        { key: 'next', label: t('stat.next'), span: 2, pieces: upcoming },
+        { key: 'hold', label: t('stat.hold'), span: 1, pieces: [held], dim: holdUsed, onPress: onHold },
+        { key: 'score', label: t('stat.score'), span: 1, value: String(score) },
+        { key: 'lines', label: t('stat.lines'), span: 1, value: linesValue },
+        ...(mode === 'zen' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
+        { key: 'time', label: timeLabel, span: 1, value: timeValue },
+      ];
+
+  // Pack the tiles into rows; a lone tile at the end of the box fills its row.
+  const rows: Tile[][] = [[]];
+  let used = 0;
+  for (const tile of tiles) {
+    if (used + tile.span > columns) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1]!.push(tile);
+    used += tile.span;
+  }
+  const lastRow = rows[rows.length - 1]!;
+  if (!wide && lastRow.length === 1) lastRow[0] = { ...lastRow[0]!, span: 2 };
+
+  const tileHeight = (height - TILE_GAP * (rows.length - 1)) / rows.length;
+  const cell = wide ? 7 : 9;
+  const widthFor = (span: number) =>
+    `${(span * (100 - (columns - 1) * GAP_PERCENT)) / columns + (span - 1) * GAP_PERCENT}%` as const;
 
   return (
-    <View style={[isBox ? styles.box : styles.bar, { height }]}>
-      {tiles.map((tile, i) => {
-        // In the box, an odd last tile spans the full width.
-        const spansRow = isBox && tiles.length % 2 === 1 && i === tiles.length - 1;
+    <View style={[styles.grid, { height }]}>
+      {rows.flat().map((tile) => {
         const content = (
           <>
             <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               {tile.label}
             </Text>
-            {tile.piece !== undefined ? (
-              <PiecePreview type={tile.piece} dim={tile.dim} />
+            {tile.pieces ? (
+              <Pieces types={tile.pieces} cell={cell} dimmed={tile.dim} />
             ) : (
               <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
                 {tile.value}
@@ -134,11 +173,7 @@ function ScoreBoard({
             )}
           </>
         );
-        const tileStyle = [
-          styles.tile,
-          { height: tileHeight },
-          isBox ? { width: spansRow ? ('100%' as const) : ('48.5%' as const) } : { flex: tile.grow },
-        ];
+        const tileStyle = [styles.tile, { height: tileHeight, width: widthFor(tile.span) }];
         return tile.onPress ? (
           <Pressable
             key={tile.key}
@@ -150,7 +185,7 @@ function ScoreBoard({
             {content}
           </Pressable>
         ) : (
-          <View key={tile.key} style={tileStyle}>
+          <View key={tile.key} style={tileStyle} accessibilityLabel={tile.key === 'next' ? t('game.nextLabel') : undefined}>
             {content}
           </View>
         );
@@ -163,8 +198,7 @@ export default memo(ScoreBoard);
 
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
-    bar: { flexDirection: 'row', gap: TILE_GAP, paddingHorizontal: 12 },
-    box: {
+    grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'space-between',
@@ -175,7 +209,7 @@ const makeStyles = (c: ThemeColors) =>
       borderColor: c.border,
       borderWidth: 2,
       borderRadius: 6,
-      paddingVertical: 4,
+      paddingVertical: 3,
       paddingHorizontal: 6,
       justifyContent: 'space-between',
     },
@@ -183,11 +217,11 @@ const makeStyles = (c: ThemeColors) =>
     label: { color: c.textSecondary, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
     value: {
       color: c.textPrimary,
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
-    previewBox: { height: PREVIEW_ROWS * PREVIEW_CELL, justifyContent: 'center' },
+    pieces: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     previewRow: { flexDirection: 'row' },
     dim: { opacity: 0.35 },
   });

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useApp } from '../app/AppContext';
 import type { ThemeColors } from '../constants/colors';
 import { BOARD_COLS, BOARD_ROWS, getMatrix, type TetrominoType } from '../constants/tetrominos';
@@ -12,6 +12,8 @@ interface BoardProps {
   cellSize: number;
   /** Full rows that are flashing before they collapse. */
   clearingRows: number[];
+  /** The game just ended: a haze rises through the board from the bottom. */
+  gameOver: boolean;
 }
 
 interface CellProps {
@@ -109,7 +111,48 @@ function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
   );
 }
 
-function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
+/** The end-of-game haze: rows fill from the bottom to the top, one after another. */
+function GameOverHaze({ cellSize }: { cellSize: number }) {
+  const { theme } = useApp();
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 850,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+  }, [progress]);
+
+  const rows: React.ReactNode[] = [];
+  for (let fromBottom = 0; fromBottom < BOARD_ROWS; fromBottom++) {
+    const start = (fromBottom / BOARD_ROWS) * 0.8;
+    const opacity = progress.interpolate({
+      inputRange: [start, start + 0.2],
+      outputRange: [0, 0.55],
+      extrapolate: 'clamp',
+    });
+    rows.push(
+      <Animated.View
+        key={fromBottom}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          width: cellSize * BOARD_COLS,
+          top: (BOARD_ROWS - 1 - fromBottom) * cellSize,
+          height: cellSize,
+          backgroundColor: theme.textSecondary,
+          opacity,
+        }}
+      />,
+    );
+  }
+  return <>{rows}</>;
+}
+
+function Board({ grid, piece, ghostRow, cellSize, clearingRows, gameOver }: BoardProps) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
@@ -147,6 +190,7 @@ function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
           ))}
         </View>
       ))}
+      {gameOver && <GameOverHaze cellSize={cellSize} />}
       {clearCount > 0 && (
         <ClearFlash key={clearingRows.join(',')} rows={clearingRows} cellSize={cellSize} />
       )}
