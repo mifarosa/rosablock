@@ -55,3 +55,10 @@ Bump `expo.version` for each release; the build number is automatic.
 - Before the App Store review: put `google.com, pub-1672861293331033, DIRECT, f08c47fec0942fa0` in
   `app-ads.txt` on the developer website, link the app to its App Store page in AdMob, and fill
   in App Store Connect -> App Privacy (advertising data, device ID, usage data).
+
+## Privacy policy
+
+The page text is `docs/privacy-policy.html` (English and Turkish). Upload it to the address in
+`src/constants/links.ts` (`PRIVACY_URL`, now `https://mifarosa.com/rosablock/privacy.html`) and use the
+same URL in App Store Connect -> App Information -> Privacy Policy URL. The app links to it from
+Settings.

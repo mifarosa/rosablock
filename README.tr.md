@@ -14,11 +14,14 @@ React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir T
 - **İki oynama biçimi**
   - **Tuşsuz** (tam ekran): dokun = döndür, yana kaydır = hareket, basılı tut = hızlanarak in, aşağı fiske = çat diye indir.
   - **Tuşlar**: durum kutusunun yanında kompakt 2x2 tuş kümesi, tek başparmakla oynamak için; küçük ⇄ tuşu tarafları değiştirir.
-- **Gerçek Tetris kuralları**: duvar itmeli SRS döndürme, 7'li torba, gölge parça, parça tutma (parça başına bir kez), seviyeye göre yerçekimi.
-- **His**: dolan satırlar çökmeden önce parlar, 3-4 satırda tahta sarsılır, titreşim satır sayısına göre güçlenir.
+- **Gerçek Tetris kuralları**: duvar itmeli SRS döndürme, 7'li torba, sıradaki üç parçanın gösterilmesi, gölge parça, parça tutma (parça başına bir kez), seviyeye göre yerçekimi ve kilit gecikmesi (yere değen parçayı kaydırıp döndürmek için yarım saniye).
+- **Puanlama**: satır x seviye, kombo, arka arkaya Tetris (x1,5) ve mükemmel temizlik bonusu; her biri için ekranda yazı çıkar.
+- **His**: dolan satırlar çökmeden önce parlar, 3-4 satırda tahta sarsılır, titreşim satır sayısına göre güçlenir, oyun bitince tahtayı bir sis kaplar.
 - **Otomatik kayıt ve devam**: her modun kendi kaydı var; kayıtlı modu seçince "Devam Et / Yeni Başla" sorulur, devam edilen oyun 3-2-1 geri sayımla başlar.
 - Her mod için **en iyiler** (Sprint'te en iyi süre).
 - **Diller**: İngilizce ve Türkçe (telefonun dilini izler, Ayarlar'dan değiştirilir).
+- **Erişilebilirlik**: Ayarlar'da renk körlüğüne uygun parça renkleri (Okabe-Ito tabanlı).
+- **Nasıl oynanır**: ilk açılışta kendiliğinden açılır, sonra da hep bir dokunuş uzakta (ana menü ve duraklatma menüsü).
 - **Temalar**: Gül, Lavanta ve Nane; son ikisinde yumuşak vektörel arka planlar (lavanta başakları, nane dalları).
 - **Ses**: yumuşak marimba/çıngırak tınılı efektler ve sakin bir müzik döngüsü; hepsi bir betikle sentezlenir (hazır örnek yok). Efektlerin ve müziğin ayrı anahtarı var; telefonun sessiz düğmesine uyulur.
 - **Reklam**: ödüllü reklam, oyun bittikten sonra oyuna bir kez devam ettirir (üstteki 10 satır silinir); oyunlar arasında, rahatsız etmeyecek şekilde seyreltilmiş bir geçiş reklamı çıkabilir. Yasanın istediği yerlerde onay sorulur.
