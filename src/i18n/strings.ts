@@ -76,7 +76,7 @@ const tr = {
   'settings.controls.gestures': 'Tuşsuz',
   'settings.controls.buttons': 'Tuşlar',
   'settings.controls.gesturesHint':
-    'Dokun: döndür · aşağı fiske: çat diye indir · kaydır: yana · basılı tut (dolar): hızlanarak in',
+    'Dokun: döndür · aşağı fiske: çat diye indir · kaydır: yana · basılı tut: hızlanarak in',
   'settings.controls.buttonsHint':
     'Tuşlar bir yanda, durum kutusu diğer yanda. Oyunda ⇄ ile yer değiştirir',
   'theme.rose': 'Gül',
@@ -160,7 +160,7 @@ const en: Record<StringKey, string> = {
   'settings.controls.gestures': 'Gestures',
   'settings.controls.buttons': 'Buttons',
   'settings.controls.gesturesHint':
-    'Tap: rotate · flick down: drop · swipe: move · hold (it fills): speed down',
+    'Tap: rotate · flick down: drop · swipe: move · hold: speed down',
   'settings.controls.buttonsHint':
     'Buttons on one side, status box on the other. Use ⇄ in the game to swap sides',
   'theme.rose': 'Rose',

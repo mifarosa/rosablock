@@ -12,8 +12,6 @@ interface BoardProps {
   cellSize: number;
   /** Full rows that are flashing before they collapse. */
   clearingRows: number[];
-  /** 0 to 1: the hold-to-drop charge, drawn filling the falling piece from the bottom up. */
-  charge: Animated.Value;
 }
 
 interface CellProps {
@@ -111,60 +109,7 @@ function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
   );
 }
 
-/**
- * A light fill that rises through the falling piece, bottom row first, as the hold charges.
- * Each block fills by its own share of the piece's height, so it reads as one filling shape.
- */
-function ChargeFill({
-  piece,
-  cellSize,
-  charge,
-}: {
-  piece: ActivePiece;
-  cellSize: number;
-  charge: Animated.Value;
-}) {
-  const { theme } = useApp();
-  const matrix = getMatrix(piece.type, piece.rotation);
-  const used = matrix.map((row, r) => (row.some((v) => v === 1) ? r : -1)).filter((r) => r >= 0);
-  const top = Math.min(...used);
-  const bottom = Math.max(...used);
-  const height = bottom - top + 1;
-
-  const cells: React.ReactNode[] = [];
-  for (let r = 0; r < matrix.length; r++) {
-    for (let c = 0; c < matrix[r]!.length; c++) {
-      if (!matrix[r]![c]) continue;
-      const fromBottom = bottom - r;
-      const scaleY = charge.interpolate({
-        inputRange: [fromBottom / height, (fromBottom + 1) / height],
-        outputRange: [0, 1],
-        extrapolate: 'clamp',
-      });
-      cells.push(
-        <Animated.View
-          key={`${r}-${c}`}
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: (piece.col + c) * cellSize,
-            top: (piece.row + r) * cellSize,
-            width: cellSize,
-            height: cellSize,
-            borderRadius: 2,
-            backgroundColor: theme.textPrimary,
-            opacity: 0.8,
-            transformOrigin: 'bottom',
-            transform: [{ scaleY }],
-          }}
-        />,
-      );
-    }
-  }
-  return <>{cells}</>;
-}
-
-function Board({ grid, piece, ghostRow, cellSize, clearingRows, charge }: BoardProps) {
+function Board({ grid, piece, ghostRow, cellSize, clearingRows }: BoardProps) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
@@ -202,7 +147,6 @@ function Board({ grid, piece, ghostRow, cellSize, clearingRows, charge }: BoardP
           ))}
         </View>
       ))}
-      {piece && <ChargeFill piece={piece} cellSize={cellSize} charge={charge} />}
       {clearCount > 0 && (
         <ClearFlash key={clearingRows.join(',')} rows={clearingRows} cellSize={cellSize} />
       )}

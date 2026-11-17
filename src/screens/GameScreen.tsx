@@ -27,7 +27,7 @@ import { canRevive, useTetris, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
 import {
-  chargeHaptic,
+  holdHaptic,
   dropHaptic,
   finishHaptic,
   gameOverHaptic,
@@ -294,9 +294,6 @@ export default function GameScreen({
     }
   };
 
-  // The hold-to-drop charge, drawn inside the falling piece (0 to 1, driven by the touch area).
-  const charge = useRef(new Animated.Value(0)).current;
-
   const board = (
     <Board
       grid={state.grid}
@@ -304,7 +301,6 @@ export default function GameScreen({
       ghostRow={game.ghostRow}
       cellSize={cellSize}
       clearingRows={clearingRows}
-      charge={charge}
     />
   );
 
@@ -388,8 +384,7 @@ export default function GameScreen({
           onHoldDrop={heldDrop}
           onTap={rotate}
           onFlick={hardDrop}
-          onHoldStart={chargeHaptic}
-          charge={charge}
+          onHoldStart={holdHaptic}
           style={styles.playfield}
         >
           {board}

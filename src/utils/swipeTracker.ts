@@ -1,8 +1,8 @@
 // Pure gesture logic for the buttonless mode (no React, easy to test).
 //   quick tap        -> rotate (the caller does it when `end` says it was a tap)
 //   horizontal drag  -> move one column per `cellSize * STEP_X_FACTOR` travelled
-//   press and hold   -> after HOLD_DELAY_MS a charge fills for CHARGE_MS, then the piece
-//                       soft-drops until the finger leaves (the component drives the timers)
+//   press and hold   -> after HOLD_DELAY_MS the piece drops, speeding up, until the finger leaves
+//                       (the component drives the timers)
 //   fast flick down  -> hard drop (see `isFlickDown`)
 // Slow downward drift never does anything, so a lazy tap cannot push the piece down.
 
@@ -15,10 +15,8 @@ export interface SwipeActions {
 export const MOVE_SLOP_PX = 14;
 /** A touch shorter than this, without movement or hold, is a tap. */
 export const TAP_MAX_MS = 350;
-/** How long a still finger must stay down before the charge starts. */
+/** How long a still finger must stay down before the drop starts. */
 export const HOLD_DELAY_MS = 350;
-/** How long the charge takes to fill; when it is full the drop starts. */
-export const CHARGE_MS = 400;
 const STEP_X_FACTOR = 0.8;
 
 /** A flick is far enough, fast enough (px per ms) and mostly vertical. */
@@ -56,7 +54,7 @@ export class SwipeTracker {
     return this.holding;
   }
 
-  /** Called when the charge is full. Returns true if the hold really begins (finger is still). */
+  /** Called when the hold delay is over. Returns true if the hold really begins (finger is still). */
   beginHold(): boolean {
     if (this.moved) return false;
     this.holding = true;
