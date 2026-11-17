@@ -110,6 +110,8 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
     backToBack: s.backToBack === true,
     clearSeq: 0,
     lastClear: null,
+    lockSeq: 0,
+    lastLock: null,
   };
   // Saved in the middle of a line-clear flash: finish it now.
   if (game.clearingRows.length > 0) game = finishClear(game);

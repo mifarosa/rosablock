@@ -74,6 +74,14 @@ const makeStyles = (c: ThemeColors) =>
       textShadowRadius: 6,
     },
     pointsAlone: { fontSize: 26 },
+    level: {
+      color: c.textPrimary,
+      fontSize: 22,
+      fontWeight: '900',
+      letterSpacing: 4,
+      textShadowColor: c.background,
+      textShadowRadius: 8,
+    },
     extras: { alignItems: 'center', gap: 1, marginTop: 2 },
     extra: {
       color: c.textSecondary,
@@ -84,3 +92,36 @@ const makeStyles = (c: ThemeColors) =>
       textShadowRadius: 6,
     },
   });
+
+/** "LEVEL 5": a quiet banner that fades in, floats up a little and fades out. */
+export function LevelToast({ level }: { level: number }) {
+  const { theme, t } = useApp();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 1500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [progress]);
+
+  const opacity = progress.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] });
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [10, -24] });
+  const scale = progress.interpolate({
+    inputRange: [0, 0.15, 0.3],
+    outputRange: [0.85, 1.08, 1],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.box, { opacity, transform: [{ translateY }, { scale }] }]}
+    >
+      <Text style={styles.level}>{t('toast.level', { n: level })}</Text>
+    </Animated.View>
+  );
+}

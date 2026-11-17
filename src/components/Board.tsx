@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useApp } from '../app/AppContext';
 import type { ThemeColors } from '../constants/colors';
 import { BOARD_COLS, BOARD_ROWS, getMatrix, type TetrominoType } from '../constants/tetrominos';
-import { CLEAR_ANIM_MS, type ActivePiece, type Grid } from '../hooks/useTetris';
+import { CLEAR_ANIM_MS, type ActivePiece, type Grid, type LockInfo } from '../hooks/useTetris';
 
 interface BoardProps {
   grid: Grid;
@@ -14,6 +14,10 @@ interface BoardProps {
   clearingRows: number[];
   /** The game just ended: a haze rises through the board from the bottom. */
   gameOver: boolean;
+  /** The latest landing: a little dust under the piece, and a trail after a hard drop. */
+  lock: LockInfo | null;
+  /** Goes up by one at every level-up: a wave of light runs up the board. */
+  levelWave: number;
 }
 
 interface CellProps {
@@ -111,6 +115,136 @@ function ClearFlash({ rows, cellSize }: { rows: number[]; cellSize: number }) {
   );
 }
 
+/**
+ * What happens where a piece lands: two puffs of dust spread out from under the lowest blocks, and
+ * after a hard drop a faint trail in the piece's color shows the way it fell.
+ */
+function LockEffect({ info, cellSize }: { info: LockInfo; cellSize: number }) {
+  const { theme } = useApp();
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: info.hard ? 460 : 380,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [progress, info.hard]);
+
+  const taken = new Set(info.cells.map(([r, c]) => `${r},${c}`));
+  const bottoms = info.cells.filter(([r, c]) => !taken.has(`${r + 1},${c}`));
+  const puff = cellSize * 0.3;
+  const spread = progress.interpolate({ inputRange: [0, 1], outputRange: [0, cellSize * 0.6] });
+  const rise = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -cellSize * 0.3] });
+  const dust = progress.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] });
+  const trail = progress.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] });
+  const color = theme.pieces[info.type];
+
+  const nodes: React.ReactNode[] = [];
+  bottoms.forEach(([r, c]) => {
+    for (const side of [-1, 1]) {
+      nodes.push(
+        <Animated.View
+          key={`d-${r}-${c}-${side}`}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: c * cellSize + (cellSize - puff) / 2,
+            top: (r + 1) * cellSize - puff,
+            width: puff,
+            height: puff,
+            borderRadius: puff / 2,
+            backgroundColor: theme.textPrimary,
+            opacity: dust,
+            transform: [{ translateX: Animated.multiply(spread, side) }, { translateY: rise }],
+          }}
+        />,
+      );
+    }
+  });
+
+  if (info.hard) {
+    // One strip per column: from where the piece started down to the top block of that column.
+    const topOfColumn = new Map<number, number>();
+    info.cells.forEach(([r, c]) => topOfColumn.set(c, Math.min(topOfColumn.get(c) ?? r, r)));
+    topOfColumn.forEach((top, c) => {
+      const length = top - info.fromRow;
+      if (length < 1) return;
+      nodes.push(
+        <Animated.View
+          key={`t-${c}`}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: c * cellSize + cellSize * 0.2,
+            top: info.fromRow * cellSize,
+            width: cellSize * 0.6,
+            height: length * cellSize,
+            borderRadius: cellSize * 0.2,
+            backgroundColor: color,
+            opacity: trail,
+          }}
+        />,
+      );
+    });
+  }
+  return <>{nodes}</>;
+}
+
+/** A soft band of light that runs from the bottom of the board to the top at a level-up. */
+function LevelWave({ cellSize }: { cellSize: number }) {
+  const { theme } = useApp();
+  const progress = useRef(new Animated.Value(0)).current;
+  const boardHeight = cellSize * BOARD_ROWS;
+  const band = cellSize * 6;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [progress]);
+
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [boardHeight, -band] });
+  // Three stacked layers make the band brightest in the middle without a gradient.
+  const layers: [number, number][] = [
+    [1, 0.08],
+    [0.62, 0.1],
+    [0.28, 0.14],
+  ];
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: cellSize * BOARD_COLS,
+        height: band,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ translateY }],
+      }}
+    >
+      {layers.map(([size, alpha]) => (
+        <View
+          key={size}
+          style={{
+            position: 'absolute',
+            width: '100%',
+            height: band * size,
+            backgroundColor: theme.textPrimary,
+            opacity: alpha * 2,
+          }}
+        />
+      ))}
+    </Animated.View>
+  );
+}
+
 /** The end-of-game haze: rows fill from the bottom to the top, one after another. */
 function GameOverHaze({ cellSize }: { cellSize: number }) {
   const { theme } = useApp();
@@ -152,7 +286,16 @@ function GameOverHaze({ cellSize }: { cellSize: number }) {
   return <>{rows}</>;
 }
 
-function Board({ grid, piece, ghostRow, cellSize, clearingRows, gameOver }: BoardProps) {
+function Board({
+  grid,
+  piece,
+  ghostRow,
+  cellSize,
+  clearingRows,
+  gameOver,
+  lock,
+  levelWave,
+}: BoardProps) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const display = useMemo(() => buildDisplay(grid, piece, ghostRow), [grid, piece, ghostRow]);
@@ -190,6 +333,8 @@ function Board({ grid, piece, ghostRow, cellSize, clearingRows, gameOver }: Boar
           ))}
         </View>
       ))}
+      {lock && <LockEffect key={lock.id} info={lock} cellSize={cellSize} />}
+      {levelWave > 0 && <LevelWave key={levelWave} cellSize={cellSize} />}
       {gameOver && <GameOverHaze cellSize={cellSize} />}
       {clearCount > 0 && (
         <ClearFlash key={clearingRows.join(',')} rows={clearingRows} cellSize={cellSize} />

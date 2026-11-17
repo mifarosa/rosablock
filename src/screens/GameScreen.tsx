@@ -13,7 +13,7 @@ import { maybeShowInterstitial } from '../ads/interstitial';
 import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
-import ClearToast from '../components/ClearToast';
+import ClearToast, { LevelToast } from '../components/ClearToast';
 import Controls from '../components/Controls';
 import { Dialog, DialogButton, DialogSwitch, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
@@ -209,10 +209,21 @@ export default function GameScreen({
     else playSound('land');
   }, [state.grid, state.clearingRows]);
 
+  // Level-up: a wave of light on the board, a banner and a sound.
   const prevLevel = useRef(state.level);
+  const [levelWave, setLevelWave] = useState(0);
+  const [levelBanner, setLevelBanner] = useState<number | null>(null);
   useEffect(() => {
-    if (state.level > prevLevel.current) playSound('levelUp');
+    if (state.level > prevLevel.current) {
+      playSound('levelUp');
+      setLevelWave((n) => n + 1);
+      setLevelBanner(state.level);
+      const id = setTimeout(() => setLevelBanner(null), 1600);
+      prevLevel.current = state.level;
+      return () => clearTimeout(id);
+    }
     prevLevel.current = state.level;
+    return undefined;
   }, [state.level]);
 
   useEffect(() => {
@@ -329,6 +340,8 @@ export default function GameScreen({
       cellSize={cellSize}
       clearingRows={clearingRows}
       gameOver={state.status === 'over'}
+      lock={state.lastLock}
+      levelWave={levelWave}
     />
   );
 
@@ -446,6 +459,18 @@ export default function GameScreen({
           ]}
         >
           <ClearToast key={toast.id} info={toast} />
+        </View>
+      )}
+
+      {levelBanner !== null && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.toastWrap,
+            { top: insets.top + HEADER_HEIGHT + SECTION_GAP + boardHeight * 0.58 },
+          ]}
+        >
+          <LevelToast key={levelBanner} level={levelBanner} />
         </View>
       )}
 

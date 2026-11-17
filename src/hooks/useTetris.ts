@@ -64,6 +64,21 @@ export interface GameState {
   clearSeq: number;
   /** The most recent line clear, for the pop-up text; null until there is one. */
   lastClear: ClearInfo | null;
+  /** Counts piece landings, so the screen can tell a new `lastLock` from the one it showed. */
+  lockSeq: number;
+  /** The most recent landing, for the landing effects; null until there is one. */
+  lastLock: LockInfo | null;
+}
+
+export interface LockInfo {
+  id: number;
+  type: TetrominoType;
+  /** The landed blocks as [row, col] on the board. */
+  cells: [number, number][];
+  /** A hard drop leaves a trail from where the piece started. */
+  hard: boolean;
+  /** Top row of the piece before a hard drop (only meaningful when `hard`). */
+  fromRow: number;
 }
 
 export interface ClearInfo {
@@ -201,6 +216,8 @@ export function createGame(mode: GameMode): GameState {
     backToBack: false,
     clearSeq: 0,
     lastClear: null,
+    lockSeq: 0,
+    lastLock: null,
   };
 }
 
@@ -223,21 +240,43 @@ export const CLEAR_ANIM_MS = 300;
  * Locks a piece into the grid. If rows became full they are only marked (`clearingRows`) so the
  * screen can flash them; `finishClear` then removes them and brings the next piece.
  */
-function lockPiece(state: GameState, piece: ActivePiece, bonus: number): GameState {
+function lockPiece(
+  state: GameState,
+  piece: ActivePiece,
+  bonus: number,
+  hardFromRow?: number,
+): GameState {
   const grid: Grid = state.grid.map((row) => [...row]);
   const matrix = getMatrix(piece.type, piece.rotation);
+  const cells: [number, number][] = [];
   for (let r = 0; r < matrix.length; r++) {
     for (let c = 0; c < matrix[r]!.length; c++) {
-      if (matrix[r]![c]) grid[piece.row + r]![piece.col + c] = piece.type;
+      if (!matrix[r]![c]) continue;
+      grid[piece.row + r]![piece.col + c] = piece.type;
+      cells.push([piece.row + r, piece.col + c]);
     }
   }
+  const lockInfo: LockInfo = {
+    id: state.lockSeq + 1,
+    type: piece.type,
+    cells,
+    hard: hardFromRow !== undefined,
+    fromRow: hardFromRow ?? piece.row,
+  };
 
   const fullRows: number[] = [];
   grid.forEach((row, index) => {
     if (row.every((cell) => cell !== null)) fullRows.push(index);
   });
 
-  const locked: GameState = { ...state, grid, piece: null, score: state.score + bonus };
+  const locked: GameState = {
+    ...state,
+    grid,
+    piece: null,
+    score: state.score + bonus,
+    lockSeq: lockInfo.id,
+    lastLock: lockInfo,
+  };
   if (fullRows.length === 0) return spawnNext({ ...locked, combo: -1 });
   return { ...locked, clearingRows: fullRows };
 }
@@ -367,7 +406,7 @@ export function hardDrop(state: GameState): GameState {
   const p = state.piece;
   if (state.status !== 'playing' || !p) return state;
   const landing = getGhostRow(state.grid, p);
-  return lockPiece(state, { ...p, row: landing }, (landing - p.row) * 2);
+  return lockPiece(state, { ...p, row: landing }, (landing - p.row) * 2, p.row);
 }
 
 /** Sets the falling piece aside (or swaps it with the held one). Once per piece. */

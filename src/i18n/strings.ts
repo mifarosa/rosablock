@@ -72,6 +72,7 @@ const tr = {
   'toast.combo': 'KOMBO ×{n}',
   'toast.backToBack': 'ARKA ARKAYA',
   'toast.perfect': 'MÜKEMMEL TEMİZLİK!',
+  'toast.level': 'SEVİYE {n}',
 
   'howto.title': 'Nasıl oynanır',
   'howto.gotIt': 'Anladım',
@@ -203,6 +204,7 @@ const en: Record<StringKey, string> = {
   'toast.combo': 'COMBO ×{n}',
   'toast.backToBack': 'BACK-TO-BACK',
   'toast.perfect': 'PERFECT CLEAR!',
+  'toast.level': 'LEVEL {n}',
 
   'howto.title': 'How to play',
   'howto.gotIt': 'Got it',
