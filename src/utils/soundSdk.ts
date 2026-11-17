@@ -21,7 +21,10 @@ export type SoundName =
   | 'gameOver'
   | 'finished'
   | 'tick'
-  | 'go';
+  | 'go'
+  | 'boom'
+  | 'bomb'
+  | 'slow';
 
 export interface SoundSdk {
   audio: typeof AudioModule;
@@ -48,6 +51,9 @@ try {
       finished: require('../../assets/sounds/finished.wav'),
       tick: require('../../assets/sounds/tick.wav'),
       go: require('../../assets/sounds/go.wav'),
+      boom: require('../../assets/sounds/boom.wav'),
+      bomb: require('../../assets/sounds/bomb.wav'),
+      slow: require('../../assets/sounds/slow.wav'),
       music: require('../../assets/sounds/music.m4a'),
     },
   };

@@ -6,14 +6,20 @@ import {
   TETROMINO_TYPES,
   getKicks,
   getMatrix,
+  type PieceType,
   type Rotation,
   type TetrominoType,
 } from '../constants/tetrominos';
 import {
   MARATHON_MAX_LEVEL,
+  DIG_LEVEL,
+  DIG_ROWS,
   MARATHON_TARGET_LINES,
+  PARTY_COMBO_FOR_BOMB,
+  PARTY_SLOW_MS,
   SPRINT_TARGET_LINES,
   ULTRA_DURATION_MS,
+  type DigDifficulty,
   type GameMode,
 } from '../constants/modes';
 
@@ -21,11 +27,12 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type Cell = TetrominoType | null;
+/** A board cell: a piece color, 'G' for a junk block (Dig), or empty. */
+export type Cell = TetrominoType | 'G' | null;
 export type Grid = Cell[][];
 
 export interface ActivePiece {
-  type: TetrominoType;
+  type: PieceType;
   rotation: Rotation;
   row: number; // top-left of the piece matrix inside the grid
   col: number;
@@ -64,15 +71,32 @@ export interface GameState {
   clearSeq: number;
   /** The most recent line clear, for the pop-up text; null until there is one. */
   lastClear: ClearInfo | null;
+  /** Dig only: the difficulty this game was started with. */
+  difficulty: DigDifficulty | null;
+  /** Party only: how long (ms) the slow-down from a four-row clear still lasts. */
+  slowMsLeft: number;
+  /** Counts bomb blasts, so the screen can tell a new `lastBlast` from the one it showed. */
+  blastSeq: number;
+  /** The most recent bomb blast, for the explosion effect; null until there is one. */
+  lastBlast: BlastInfo | null;
   /** Counts piece landings, so the screen can tell a new `lastLock` from the one it showed. */
   lockSeq: number;
   /** The most recent landing, for the landing effects; null until there is one. */
   lastLock: LockInfo | null;
 }
 
+export interface BlastInfo {
+  id: number;
+  /** Where the bomb landed (the center of the 3x3 blast). */
+  row: number;
+  col: number;
+  /** How many blocks the blast destroyed. */
+  destroyed: number;
+}
+
 export interface LockInfo {
   id: number;
-  type: TetrominoType;
+  type: PieceType;
   /** The landed blocks as [row, col] on the board. */
   cells: [number, number][];
   /** A hard drop leaves a trail from where the piece started. */
@@ -90,6 +114,10 @@ export interface ClearInfo {
   combo: number;
   backToBack: boolean;
   perfect: boolean;
+  /** Party: this clear earned a bomb (the next piece is one). */
+  bomb: boolean;
+  /** Party: this clear started the slow-down. */
+  slow: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +146,8 @@ export function gravityFor(mode: GameMode, level: number): number {
 
 export function levelFor(mode: GameMode, lines: number): number {
   if (mode === 'zen') return 1;
+  // Dig keeps the level it started with (see createGame); this is only a safe default.
+  if (mode === 'dig') return 1;
   return Math.min(MARATHON_MAX_LEVEL, Math.floor(lines / 10) + 1);
 }
 
@@ -154,7 +184,7 @@ function drawFromBag(bag: TetrominoType[]): { type: TetrominoType; bag: Tetromin
 /** Returns true if the piece at (row, col, rotation) overlaps walls, floor or locked cells. */
 export function collides(
   grid: Grid,
-  type: TetrominoType,
+  type: PieceType,
   rotation: Rotation,
   row: number,
   col: number,
@@ -172,7 +202,7 @@ export function collides(
   return false;
 }
 
-function spawnPiece(type: TetrominoType): ActivePiece {
+function spawnPiece(type: PieceType): ActivePiece {
   const size = getMatrix(type, 0).length;
   return { type, rotation: 0, row: 0, col: Math.floor((BOARD_COLS - size) / 2) };
 }
@@ -192,18 +222,44 @@ export function clearLines(grid: Grid): { grid: Grid; cleared: number } {
   return { grid: [...padding, ...remaining], cleared };
 }
 
-export function createGame(mode: GameMode): GameState {
+/** Junk rows for Dig: full except for one hole each, and the hole moves from row to row. */
+export function createJunkRows(count: number, rng: () => number = Math.random): Cell[][] {
+  const rows: Cell[][] = [];
+  let previous = -1;
+  for (let i = 0; i < count; i++) {
+    let hole = Math.floor(rng() * BOARD_COLS);
+    if (hole === previous) hole = (hole + 1 + Math.floor(rng() * (BOARD_COLS - 1))) % BOARD_COLS;
+    previous = hole;
+    rows.push(Array.from({ length: BOARD_COLS }, (_, c) => (c === hole ? null : ('G' as const))));
+  }
+  return rows;
+}
+
+export interface GameOptions {
+  /** Dig only. */
+  difficulty?: DigDifficulty;
+}
+
+export function createGame(mode: GameMode, options: GameOptions = {}): GameState {
   const first = drawFromBag([]);
   const second = drawFromBag(first.bag);
+  const difficulty = mode === 'dig' ? (options.difficulty ?? 'normal') : null;
+  const grid = createEmptyGrid();
+  if (difficulty) {
+    const junk = createJunkRows(DIG_ROWS[difficulty]);
+    junk.forEach((row, i) => {
+      grid[BOARD_ROWS - junk.length + i] = row;
+    });
+  }
   return {
     mode,
-    grid: createEmptyGrid(),
+    grid,
     piece: spawnPiece(first.type),
     next: second.type,
     bag: second.bag,
     score: 0,
     lines: 0,
-    level: 1,
+    level: difficulty ? DIG_LEVEL[difficulty] : 1,
     elapsedMs: 0,
     status: 'playing',
     clearingRows: [],
@@ -216,13 +272,27 @@ export function createGame(mode: GameMode): GameState {
     backToBack: false,
     clearSeq: 0,
     lastClear: null,
+    difficulty,
+    slowMsLeft: 0,
+    blastSeq: 0,
+    lastBlast: null,
     lockSeq: 0,
     lastLock: null,
   };
 }
 
-/** Brings the next piece into play; a blocked spawn ends the game. */
-function spawnNext(state: GameState): GameState {
+/**
+ * Brings the next piece into play; a blocked spawn ends the game. With `asBomb` the piece that
+ * arrives is a bomb and the queued piece stays where it is (nothing is lost).
+ */
+function spawnNext(state: GameState, asBomb = false): GameState {
+  if (asBomb) {
+    const bomb = spawnPiece('B');
+    if (collides(state.grid, bomb.type, bomb.rotation, bomb.row, bomb.col)) {
+      return { ...state, piece: null, status: 'over' };
+    }
+    return { ...state, piece: bomb, holdUsed: false, restMs: 0, lockResets: 0 };
+  }
   const piece = spawnPiece(state.next);
   const draw = drawFromBag(state.bag);
   const base: GameState = { ...state, next: draw.type, bag: draw.bag };
@@ -236,6 +306,36 @@ function spawnNext(state: GameState): GameState {
 /** How long full rows are shown flashing before they collapse. */
 export const CLEAR_ANIM_MS = 300;
 
+/** Points per block a bomb destroys (times the level). */
+const BLAST_POINTS = 10;
+
+/** A bomb that has landed: it clears the 3x3 area around its own cell and is gone. */
+function blast(state: GameState, piece: ActivePiece, bonus: number): GameState {
+  const grid: Grid = state.grid.map((row) => [...row]);
+  let destroyed = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const r = piece.row + dr;
+      const c = piece.col + dc;
+      if (r < 0 || r >= BOARD_ROWS || c < 0 || c >= BOARD_COLS) continue;
+      if (grid[r]![c] !== null) {
+        grid[r]![c] = null;
+        destroyed++;
+      }
+    }
+  }
+  const id = state.blastSeq + 1;
+  return spawnNext({
+    ...state,
+    grid,
+    piece: null,
+    score: state.score + bonus + destroyed * BLAST_POINTS * state.level,
+    combo: -1,
+    blastSeq: id,
+    lastBlast: { id, row: piece.row, col: piece.col, destroyed },
+  });
+}
+
 /**
  * Locks a piece into the grid. If rows became full they are only marked (`clearingRows`) so the
  * screen can flash them; `finishClear` then removes them and brings the next piece.
@@ -246,6 +346,7 @@ function lockPiece(
   bonus: number,
   hardFromRow?: number,
 ): GameState {
+  if (piece.type === 'B') return blast(state, piece, bonus);
   const grid: Grid = state.grid.map((row) => [...row]);
   const matrix = getMatrix(piece.type, piece.rotation);
   const cells: [number, number][] = [];
@@ -288,7 +389,7 @@ export function finishClear(state: GameState): GameState {
   const result = clearLines(state.grid);
   const cleared = result.cleared;
   const lines = state.lines + cleared;
-  const level = levelFor(state.mode, lines);
+  const level = state.mode === 'dig' ? state.level : levelFor(state.mode, lines);
 
   // Points: the rows (x level), +50 x level per combo step, x1.5 for a back-to-back Tetris, and a
   // bonus when the board ends up completely empty.
@@ -301,6 +402,10 @@ export function finishClear(state: GameState): GameState {
   const perfectPoints = perfect ? PERFECT_CLEAR_SCORES[cleared]! * state.level : 0;
   const points = rowPoints + comboPoints + perfectPoints;
 
+  // Party: every third piece in a row that clears lines brings a bomb; four rows slow time down.
+  const awardBomb = state.mode === 'party' && (combo + 1) % PARTY_COMBO_FOR_BOMB === 0;
+  const startSlow = state.mode === 'party' && cleared === 4;
+
   const updated: GameState = {
     ...state,
     grid: result.grid,
@@ -311,14 +416,25 @@ export function finishClear(state: GameState): GameState {
     combo,
     backToBack: cleared === 4,
     clearSeq: state.clearSeq + 1,
-    lastClear: { id: state.clearSeq + 1, rows: cleared, points, combo, backToBack, perfect },
+    lastClear: {
+      id: state.clearSeq + 1,
+      rows: cleared,
+      points,
+      combo,
+      backToBack,
+      perfect,
+      bomb: awardBomb,
+      slow: startSlow,
+    },
+    slowMsLeft: startSlow ? PARTY_SLOW_MS : state.slowMsLeft,
   };
 
   const sprintDone = state.mode === 'sprint' && lines >= SPRINT_TARGET_LINES;
   const marathonDone = state.mode === 'marathon' && lines >= MARATHON_TARGET_LINES;
-  if (sprintDone || marathonDone) return { ...updated, status: 'finished' };
+  const digDone = state.mode === 'dig' && !result.grid.some((row) => row.includes('G'));
+  if (sprintDone || marathonDone || digDone) return { ...updated, status: 'finished' };
 
-  return spawnNext(updated);
+  return spawnNext(updated, awardBomb);
 }
 
 /** Whether the falling piece is resting on the floor or the stack. */
@@ -358,7 +474,7 @@ export function movePiece(state: GameState, dCol: number): GameState {
 /** Rotates with SRS wall kicks. dir: +1 = clockwise, -1 = counter-clockwise. */
 export function rotatePiece(state: GameState, dir: 1 | -1): GameState {
   const p = state.piece;
-  if (state.status !== 'playing' || !p || p.type === 'O') return state;
+  if (state.status !== 'playing' || !p || p.type === 'O' || p.type === 'B') return state;
   const to = ((p.rotation + dir + 4) % 4) as Rotation;
   for (const [dx, dy] of getKicks(p.type, p.rotation, to)) {
     const row = p.row + dy;
@@ -412,7 +528,7 @@ export function hardDrop(state: GameState): GameState {
 /** Sets the falling piece aside (or swaps it with the held one). Once per piece. */
 export function holdPiece(state: GameState): GameState {
   const p = state.piece;
-  if (state.status !== 'playing' || !p || state.holdUsed) return state;
+  if (state.status !== 'playing' || !p || p.type === 'B' || state.holdUsed) return state;
 
   if (state.held === null) {
     const stashed: GameState = { ...state, held: p.type, piece: null };
@@ -427,7 +543,9 @@ export function holdPiece(state: GameState): GameState {
 export const REVIVE_CLEAR_ROWS = 10;
 
 export function canRevive(state: GameState): boolean {
-  return state.status === 'over' && !state.revived && state.mode !== 'sprint';
+  return (
+    state.status === 'over' && !state.revived && state.mode !== 'sprint' && state.mode !== 'dig'
+  );
 }
 
 /**
@@ -460,12 +578,13 @@ export function revive(state: GameState): GameState {
 export function addTime(state: GameState, deltaMs: number): GameState {
   if (state.status !== 'playing' || deltaMs <= 0) return state;
   const elapsedMs = state.elapsedMs + deltaMs;
+  const slowMsLeft = Math.max(0, state.slowMsLeft - deltaMs);
   if (state.mode === 'ultra' && elapsedMs >= ULTRA_DURATION_MS) {
     // Rows that were still flashing when time ran out still count.
     const settled = finishClear({ ...state, elapsedMs });
     return { ...settled, elapsedMs: ULTRA_DURATION_MS, status: 'finished' };
   }
-  return { ...state, elapsedMs };
+  return { ...state, elapsedMs, slowMsLeft };
 }
 
 export function togglePause(state: GameState): GameState {
@@ -479,6 +598,7 @@ export function togglePause(state: GameState): GameState {
 // ---------------------------------------------------------------------------
 
 const CLOCK_INTERVAL_MS = 50;
+const SLOW_MIN_GRAVITY_MS = 700;
 
 export interface TetrisApi {
   state: GameState;
@@ -497,8 +617,12 @@ export interface TetrisApi {
   restart: () => void;
 }
 
-export function useTetris(mode: GameMode, initial: GameState | null = null): TetrisApi {
-  const [state, setState] = useState<GameState>(() => initial ?? createGame(mode));
+export function useTetris(
+  mode: GameMode,
+  initial: GameState | null = null,
+  difficulty?: DigDifficulty,
+): TetrisApi {
+  const [state, setState] = useState<GameState>(() => initial ?? createGame(mode, { difficulty }));
   // The ref is the source of truth so timers and rapid touch events never see stale state.
   const stateRef = useRef<GameState>(state);
   const lastTsRef = useRef<number>(Date.now());
@@ -518,7 +642,9 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
   }, []);
 
   const status = state.status;
-  const gravityMs = gravityFor(state.mode, state.level);
+  // Party's slow-down stretches the gravity interval (never below 700ms) while it lasts.
+  const baseGravityMs = gravityFor(state.mode, state.level);
+  const gravityMs = state.slowMsLeft > 0 ? Math.max(baseGravityMs * 3, SLOW_MIN_GRAVITY_MS) : baseGravityMs;
 
   // Gravity.
   useEffect(() => {
@@ -583,7 +709,7 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
   const togglePauseAction = useCallback(() => commit(togglePause), [commit]);
 
   const restart = useCallback(() => {
-    const fresh = createGame(mode);
+    const fresh = createGame(mode, { difficulty: stateRef.current.difficulty ?? difficulty });
     lastTsRef.current = Date.now();
     stateRef.current = fresh;
     setState(fresh);

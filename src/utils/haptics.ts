@@ -47,3 +47,9 @@ export function finishHaptic(): void {
 export function holdHaptic(): void {
   impact(Haptics.ImpactFeedbackStyle.Light);
 }
+
+/** A bomb going off: a heavy thump and a warning buzz. */
+export function blastHaptic(): void {
+  impact(Haptics.ImpactFeedbackStyle.Heavy);
+  setTimeout(() => notify(Haptics.NotificationFeedbackType.Warning), 80);
+}

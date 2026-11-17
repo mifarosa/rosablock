@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameMode } from '../constants/modes';
-import { MODES } from '../constants/modes';
+import { DIG_DIFFICULTIES, MODES, type DigDifficulty } from '../constants/modes';
 import {
   BOARD_COLS,
   BOARD_ROWS,
   TETROMINO_TYPES,
+  type PieceType,
   type Rotation,
   type TetrominoType,
 } from '../constants/tetrominos';
@@ -25,6 +26,7 @@ export type SavedGames = Partial<Record<GameMode, GameState>>;
 const isFiniteNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isType = (v: unknown): v is TetrominoType =>
   typeof v === 'string' && (TETROMINO_TYPES as readonly string[]).includes(v);
+const isPieceType = (v: unknown): v is PieceType => v === 'B' || isType(v);
 
 function parseGrid(raw: unknown): Grid | null {
   if (!Array.isArray(raw) || raw.length !== BOARD_ROWS) return null;
@@ -33,7 +35,7 @@ function parseGrid(raw: unknown): Grid | null {
     if (!Array.isArray(row) || row.length !== BOARD_COLS) return null;
     const cells: Cell[] = [];
     for (const cell of row) {
-      if (cell !== null && !isType(cell)) return null;
+      if (cell !== null && cell !== 'G' && !isType(cell)) return null;
       cells.push(cell);
     }
     grid.push(cells);
@@ -45,7 +47,7 @@ function parsePiece(raw: unknown, grid: Grid): ActivePiece | null | undefined {
   if (raw === null) return null;
   if (typeof raw !== 'object' || raw === undefined) return undefined;
   const p = raw as Record<string, unknown>;
-  if (!isType(p.type)) return undefined;
+  if (!isPieceType(p.type)) return undefined;
   if (p.rotation !== 0 && p.rotation !== 1 && p.rotation !== 2 && p.rotation !== 3) return undefined;
   if (!Number.isInteger(p.row) || !Number.isInteger(p.col)) return undefined;
   const piece: ActivePiece = {
@@ -110,6 +112,12 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
     backToBack: s.backToBack === true,
     clearSeq: 0,
     lastClear: null,
+    difficulty: DIG_DIFFICULTIES.includes(s.difficulty as DigDifficulty)
+      ? (s.difficulty as DigDifficulty)
+      : null,
+    slowMsLeft: isFiniteNumber(s.slowMsLeft) && s.slowMsLeft > 0 ? s.slowMsLeft : 0,
+    blastSeq: 0,
+    lastBlast: null,
     lockSeq: 0,
     lastLock: null,
   };
@@ -125,7 +133,8 @@ export function isPristine(state: GameState): boolean {
     state.score === 0 &&
     state.lines === 0 &&
     state.elapsedMs < 1000 &&
-    state.grid.every((row) => row.every((cell) => cell === null))
+    // Junk blocks (Dig) are there from the start, so they do not count as progress.
+    state.grid.every((row) => row.every((cell) => cell === null || cell === 'G'))
   );
 }
 

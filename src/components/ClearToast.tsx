@@ -93,9 +93,9 @@ const makeStyles = (c: ThemeColors) =>
     },
   });
 
-/** "LEVEL 5": a quiet banner that fades in, floats up a little and fades out. */
-export function LevelToast({ level }: { level: number }) {
-  const { theme, t } = useApp();
+/** A quiet banner ("LEVEL 5", "BOMB!"): fades in, floats up a little and fades out. */
+export function BannerToast({ text }: { text: string }) {
+  const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -121,7 +121,7 @@ export function LevelToast({ level }: { level: number }) {
       pointerEvents="none"
       style={[styles.box, { opacity, transform: [{ translateY }, { scale }] }]}
     >
-      <Text style={styles.level}>{t('toast.level', { n: level })}</Text>
+      <Text style={styles.level}>{text}</Text>
     </Animated.View>
   );
 }

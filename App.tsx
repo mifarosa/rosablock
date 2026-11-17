@@ -7,7 +7,7 @@ import { startAds } from './src/ads/rewarded';
 import { AppProvider, useApp } from './src/app/AppContext';
 import ErrorBoundary from './src/app/ErrorBoundary';
 import { Dialog, DialogButton, DialogText } from './src/components/Dialog';
-import type { GameMode } from './src/constants/modes';
+import { DIG_DIFFICULTIES, DIG_ROWS, type DigDifficulty, type GameMode } from './src/constants/modes';
 import type { GameState } from './src/hooks/useTetris';
 import type { StringKey } from './src/i18n/strings';
 import GameScreen from './src/screens/GameScreen';
@@ -22,7 +22,7 @@ type Screen =
   | { name: 'settings' }
   | { name: 'howto'; first: boolean }
   // `initial` is a saved game to continue, or null for a fresh one.
-  | { name: 'game'; mode: GameMode; initial: GameState | null };
+  | { name: 'game'; mode: GameMode; initial: GameState | null; difficulty?: DigDifficulty };
 
 function Root() {
   const { theme, t, settings, update } = useApp();
@@ -58,20 +58,30 @@ function Root() {
   // A new game (not a continued one) may be preceded by an interstitial ad. `starting` keeps a
   // second tap from starting the game twice while the ad is up.
   const starting = useRef(false);
-  const startFresh = useCallback(async (mode: GameMode) => {
+  const startFresh = useCallback(async (mode: GameMode, difficulty?: DigDifficulty) => {
     if (starting.current) return;
     starting.current = true;
     await maybeShowInterstitial();
-    setScreen({ name: 'game', mode, initial: null });
+    setScreen({ name: 'game', mode, initial: null, difficulty });
     starting.current = false;
   }, []);
+
+  // Dig asks for a difficulty before every fresh game.
+  const [pickingDifficulty, setPickingDifficulty] = useState(false);
+  const beginFresh = useCallback(
+    (mode: GameMode) => {
+      if (mode === 'dig') setPickingDifficulty(true);
+      else void startFresh(mode);
+    },
+    [startFresh],
+  );
 
   const handleSelectMode = useCallback(
     (mode: GameMode) => {
       if (savedGames[mode]) setPendingMode(mode);
-      else void startFresh(mode);
+      else beginFresh(mode);
     },
-    [savedGames, startFresh],
+    [savedGames, beginFresh],
   );
 
   const pendingSaved = pendingMode ? savedGames[pendingMode] : undefined;
@@ -86,7 +96,7 @@ function Root() {
     if (pendingMode) {
       void clearGame(pendingMode);
       setSavedGames((prev) => ({ ...prev, [pendingMode]: undefined }));
-      void startFresh(pendingMode);
+      beginFresh(pendingMode);
     }
     setPendingMode(null);
   };
@@ -118,9 +128,27 @@ function Root() {
           key={screen.mode}
           mode={screen.mode}
           initialState={screen.initial}
+          difficulty={screen.difficulty}
           onExit={handleExit}
           onScoresChanged={setHighScores}
         />
+      )}
+      {screen.name === 'home' && pickingDifficulty && (
+        <Dialog title={t('dig.pick')}>
+          <DialogText>{t('dig.pickText')}</DialogText>
+          {DIG_DIFFICULTIES.map((level) => (
+            <DialogButton
+              key={level}
+              label={`${t(`dig.${level}` as StringKey)} · ${DIG_ROWS[level]}`}
+              onPress={() => {
+                setPickingDifficulty(false);
+                void startFresh('dig', level);
+              }}
+              secondary={level !== 'normal'}
+            />
+          ))}
+          <DialogButton label={t('common.cancel')} onPress={() => setPickingDifficulty(false)} secondary />
+        </Dialog>
       )}
       {screen.name === 'home' && pendingMode !== null && pendingSaved && (
         <Dialog title={t(`mode.${pendingMode}.title` as StringKey)}>

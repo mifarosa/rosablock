@@ -5,7 +5,7 @@ import { useApp } from '../app/AppContext';
 import GearIcon from '../components/GearIcon';
 import ThemeBackground from '../components/ThemeBackground';
 import type { ThemeColors } from '../constants/colors';
-import { MODES, type GameMode } from '../constants/modes';
+import { DIG_DIFFICULTIES, MODES, type GameMode, type ModeKind } from '../constants/modes';
 import type { StringKey } from '../i18n/strings';
 import type { SavedGames } from '../utils/saves';
 import type { HighScores } from '../utils/storage';
@@ -19,7 +19,8 @@ interface HomeScreenProps {
   onOpenHowTo: () => void;
 }
 
-function scoreLabel(mode: GameMode, scores: HighScores): string {
+/** The best result of a mode as text; Dig has one best time per difficulty (see the table). */
+function scoreLabel(mode: Exclude<GameMode, 'dig'>, scores: HighScores): string {
   if (mode === 'sprint') return scores.sprint === null ? '—' : formatTime(scores.sprint);
   const value = scores[mode];
   return value > 0 ? String(value) : '—';
@@ -38,6 +39,17 @@ export default function HomeScreen({
   const modeKey = (id: GameMode, part: 'title' | 'subtitle' | 'description') =>
     t(`mode.${id}.${part}` as StringKey);
 
+  // One row per mode; Dig gets a row for each difficulty.
+  const bestRows = MODES.flatMap(({ id }) =>
+    id === 'dig'
+      ? DIG_DIFFICULTIES.map((level) => ({
+          key: `dig-${level}`,
+          label: t('dig.best', { level: t(`dig.${level}` as StringKey) }),
+          value: highScores.dig[level] === null ? '—' : formatTime(highScores.dig[level]!),
+        }))
+      : [{ key: id, label: modeKey(id, 'title'), value: scoreLabel(id, highScores) }],
+  );
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <ThemeBackground />
@@ -45,40 +57,44 @@ export default function HomeScreen({
         <Text style={styles.title}>ROSABLOCK</Text>
         <Text style={styles.tagline}>{t('home.tagline')}</Text>
 
-        <Text style={styles.section}>{t('home.pickMode')}</Text>
-        {MODES.map(({ id }) => {
-          const saved = savedGames[id];
-          return (
-            <Pressable
-              key={id}
-              accessibilityRole="button"
-              accessibilityLabel={modeKey(id, 'title')}
-              onPress={() => onSelectMode(id)}
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{modeKey(id, 'title')}</Text>
-                <Text style={styles.cardSubtitle}>{modeKey(id, 'subtitle')}</Text>
-              </View>
-              <Text style={styles.cardDescription}>{modeKey(id, 'description')}</Text>
-              {saved && (
-                <Text style={styles.cardSaved}>
-                  {t('home.resume', { score: saved.score, lines: saved.lines })}
-                </Text>
-              )}
-            </Pressable>
-          );
-        })}
+        {(['classic', 'fun'] as ModeKind[]).map((kind) => (
+          <View key={kind}>
+            <Text style={styles.section}>{t(kind === 'classic' ? 'home.classic' : 'home.fun')}</Text>
+            {MODES.filter((m) => m.kind === kind).map(({ id }) => {
+              const saved = savedGames[id];
+              return (
+                <Pressable
+                  key={id}
+                  accessibilityRole="button"
+                  accessibilityLabel={modeKey(id, 'title')}
+                  onPress={() => onSelectMode(id)}
+                  style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{modeKey(id, 'title')}</Text>
+                    <Text style={styles.cardSubtitle}>{modeKey(id, 'subtitle')}</Text>
+                  </View>
+                  <Text style={styles.cardDescription}>{modeKey(id, 'description')}</Text>
+                  {saved && (
+                    <Text style={styles.cardSaved}>
+                      {t('home.resume', { score: saved.score, lines: saved.lines })}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
 
         <Text style={styles.section}>{t('home.best')}</Text>
         <View style={styles.scoreTable}>
-          {MODES.map(({ id }, i) => (
+          {bestRows.map((row, i) => (
             <View
-              key={id}
-              style={[styles.scoreRow, i < MODES.length - 1 && styles.scoreRowBorder]}
+              key={row.key}
+              style={[styles.scoreRow, i < bestRows.length - 1 && styles.scoreRowBorder]}
             >
-              <Text style={styles.scoreMode}>{modeKey(id, 'title')}</Text>
-              <Text style={styles.scoreValue}>{scoreLabel(id, highScores)}</Text>
+              <Text style={styles.scoreMode}>{row.label}</Text>
+              <Text style={styles.scoreValue}>{row.value}</Text>
             </View>
           ))}
         </View>

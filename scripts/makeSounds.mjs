@@ -2,7 +2,8 @@
 // sound is a few sine waves with a soft attack and a long, gentle fall, like a marimba or a small
 // bell. All notes come from one pentatonic scale, so any order of them sounds friendly.
 //
-//   node scripts/makeSounds.mjs
+//   node scripts/makeSounds.mjs            (everything)
+//   node scripts/makeSounds.mjs --effects  (only the effects: no ffmpeg, the music file is kept)
 //
 // The music is turned into AAC with ffmpeg to keep the app small; the effects stay WAV (tiny).
 // The output is committed, so ffmpeg is only needed to make the files again.
@@ -65,6 +66,20 @@ function glide(out, start, from, to, duration, volume) {
     phase += (TAU * frequency) / RATE;
     const env = Math.min(1, t / 0.005) * Math.pow(1 - t / duration, 2);
     out[first + i] += Math.sin(phase) * env * volume;
+  }
+}
+
+/** Low-passed noise with a fading volume: the body of an explosion. `cutoff` is 0 to 1 (higher is brighter). */
+function rumble(out, start, duration, volume, cutoff, seed) {
+  const rand = createRandom(seed);
+  const first = Math.floor(start * RATE);
+  const count = Math.floor(duration * RATE);
+  let low = 0;
+  for (let i = 0; i < count && first + i < out.length; i++) {
+    const t = i / RATE;
+    low += cutoff * ((rand() * 2 - 1) - low);
+    const env = Math.min(1, t / 0.004) * Math.pow(1 - t / duration, 2);
+    out[first + i] += low * env * volume;
   }
 }
 
@@ -165,6 +180,28 @@ const effects = {
     pluck(out, 0.5, N.G6, 1.1, 0.2);
     return out;
   },
+  boom() {
+    // A soft explosion: a low thump that falls in pitch, with a rumble of noise on top.
+    const out = buffer(0.9);
+    glide(out, 0, 150, 38, 0.5, 0.9);
+    rumble(out, 0, 0.75, 1.4, 0.12, 77);
+    pluck(out, 0.02, N.C4 / 2, 0.5, 0.25);
+    return out;
+  },
+  bomb() {
+    // A bomb arrives: two quick notes and a short sizzle, friendly rather than scary.
+    const out = buffer(0.7);
+    run(out, [N.G5, N.E5], 0.09, 0.4, 0.5);
+    rumble(out, 0.12, 0.35, 0.5, 0.5, 31);
+    return out;
+  },
+  slow() {
+    // Time slowing down: a soft sweep that sinks.
+    const out = buffer(0.9);
+    glide(out, 0, 880, 220, 0.8, 0.5);
+    glide(out, 0.04, 1320, 330, 0.7, 0.2);
+    return out;
+  },
   tick() {
     const out = buffer(0.2);
     pluck(out, 0, N.A5, 0.16, 0.6);
@@ -237,7 +274,9 @@ mkdirSync(OUT, { recursive: true });
 for (const [name, make] of Object.entries(effects)) {
   writeFileSync(`${OUT}${name}.wav`, toWav(make()));
 }
-writeFileSync(`${OUT}music.tmp.wav`, toWav(music(), 0.6));
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `${OUT}music.tmp.wav`, '-c:a', 'aac', '-b:a', '64k', `${OUT}music.m4a`]);
-unlinkSync(`${OUT}music.tmp.wav`);
+if (!process.argv.includes('--effects')) {
+  writeFileSync(`${OUT}music.tmp.wav`, toWav(music(), 0.6));
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `${OUT}music.tmp.wav`, '-c:a', 'aac', '-b:a', '64k', `${OUT}music.m4a`]);
+  unlinkSync(`${OUT}music.tmp.wav`);
+}
 console.log('Sounds written to assets/sounds');

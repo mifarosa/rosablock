@@ -13,6 +13,8 @@ export interface ThemeColors {
   overlay: string;
   ghost: string;
   pieces: Record<TetrominoType, string>;
+  /** Dig mode's junk blocks. */
+  garbage: string;
 }
 
 const rose: ThemeColors = {
@@ -24,6 +26,7 @@ const rose: ThemeColors = {
   textSecondary: '#C59EA9',
   overlay: 'rgba(26, 20, 22, 0.88)',
   ghost: 'rgba(247, 232, 236, 0.12)',
+  garbage: '#74595F',
   pieces: {
     I: '#E8A5B8', // dusty pink
     J: '#D8839F', // deep powder
@@ -44,6 +47,7 @@ const lavender: ThemeColors = {
   textSecondary: '#A9A0CB',
   overlay: 'rgba(22, 20, 28, 0.88)',
   ghost: 'rgba(238, 233, 248, 0.12)',
+  garbage: '#6A6385',
   pieces: {
     I: '#C4B3F0',
     J: '#9488DA',
@@ -64,6 +68,7 @@ const mint: ThemeColors = {
   textSecondary: '#8FBFAF',
   overlay: 'rgba(18, 25, 22, 0.88)',
   ghost: 'rgba(229, 245, 238, 0.12)',
+  garbage: '#587068',
   pieces: {
     I: '#A9E1CA',
     J: '#7DC7A8',

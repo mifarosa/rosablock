@@ -20,6 +20,8 @@ interface ScoreBoardProps {
   /** The pieces coming up, the next one first (three are shown). */
   upcoming: TetrominoType[];
   held: TetrominoType | null;
+  /** Dig: how many junk rows are left (null in the other modes). */
+  junkRows: number | null;
   /** Hold was already used for this piece. */
   holdUsed: boolean;
   onHold: () => void;
@@ -96,6 +98,7 @@ function ScoreBoard({
   elapsedMs,
   upcoming,
   held,
+  junkRows,
   holdUsed,
   onHold,
   layout,
@@ -112,8 +115,13 @@ function ScoreBoard({
   }
 
   let linesValue = String(lines);
+  let linesLabel = t('stat.lines');
   if (mode === 'sprint') linesValue = `${lines}/${SPRINT_TARGET_LINES}`;
   if (mode === 'marathon') linesValue = `${lines}/${MARATHON_TARGET_LINES}`;
+  if (mode === 'dig' && junkRows !== null) {
+    linesValue = String(junkRows);
+    linesLabel = t('stat.junk');
+  }
 
   const wide = layout === 'wide';
   const columns = wide ? 3 : 2;
@@ -125,15 +133,15 @@ function ScoreBoard({
         { key: 'hold', label: t('stat.hold'), span: 1, pieces: [held], dim: holdUsed, onPress: onHold },
         { key: 'time', label: timeLabel, span: 1, value: timeValue },
         { key: 'score', label: t('stat.score'), span: 1, value: String(score) },
-        { key: 'lines', label: t('stat.lines'), span: mode === 'zen' ? 2 : 1, value: linesValue },
-        ...(mode === 'zen' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
+        { key: 'lines', label: linesLabel, span: mode === 'zen' || mode === 'dig' ? 2 : 1, value: linesValue },
+        ...(mode === 'zen' || mode === 'dig' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
       ]
     : [
         { key: 'next', label: t('stat.next'), span: 2, pieces: upcoming },
         { key: 'hold', label: t('stat.hold'), span: 1, pieces: [held], dim: holdUsed, onPress: onHold },
         { key: 'score', label: t('stat.score'), span: 1, value: String(score) },
-        { key: 'lines', label: t('stat.lines'), span: 1, value: linesValue },
-        ...(mode === 'zen' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
+        { key: 'lines', label: linesLabel, span: 1, value: linesValue },
+        ...(mode === 'zen' || mode === 'dig' ? [] : [{ key: 'level', label: t('stat.level'), span: 1, value: String(level) }]),
         { key: 'time', label: timeLabel, span: 1, value: timeValue },
       ];
 

@@ -2,8 +2,15 @@ import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useApp } from '../app/AppContext';
 import type { ThemeColors } from '../constants/colors';
-import { BOARD_COLS, BOARD_ROWS, getMatrix, type TetrominoType } from '../constants/tetrominos';
-import { CLEAR_ANIM_MS, type ActivePiece, type Grid, type LockInfo } from '../hooks/useTetris';
+import { BOARD_COLS, BOARD_ROWS, getMatrix, type PieceType } from '../constants/tetrominos';
+import {
+  CLEAR_ANIM_MS,
+  type ActivePiece,
+  type BlastInfo,
+  type Cell,
+  type Grid,
+  type LockInfo,
+} from '../hooks/useTetris';
 
 interface BoardProps {
   grid: Grid;
@@ -18,12 +25,74 @@ interface BoardProps {
   lock: LockInfo | null;
   /** Goes up by one at every level-up: a wave of light runs up the board. */
   levelWave: number;
+  /** The latest bomb blast (Party): a ring and sparks where it went off, and the board shakes. */
+  blast: BlastInfo | null;
+  /** 0 to 1: how much of the Party slow-down is left (a thin bar along the top); 0 = none. */
+  slowFraction: number;
 }
 
 interface CellProps {
-  type: TetrominoType | null;
+  type: Cell | PieceType;
   ghost: boolean;
   size: number;
+}
+
+/** The Party bomb: a black round bomb with a shine and a fuse that ends in a glowing spark. */
+function BombCell({ ghost, size }: { ghost: boolean; size: number }) {
+  const { theme } = useApp();
+  const body = size * 0.8;
+  const top = size * 0.16; // the body sits low, the fuse above it
+  return (
+    <View style={{ width: size, height: size, opacity: ghost ? 0.4 : 1 }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: (size - body) / 2,
+          top: top + (size - top - body) / 2,
+          width: body,
+          height: body,
+          borderRadius: body / 2,
+          backgroundColor: '#140E10',
+          borderWidth: 2,
+          borderColor: theme.textSecondary,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.3,
+          top: top + size * 0.2,
+          width: size * 0.14,
+          height: size * 0.14,
+          borderRadius: size * 0.07,
+          backgroundColor: theme.textPrimary,
+          opacity: 0.7,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.58,
+          top: size * 0.1,
+          width: 2,
+          height: size * 0.18,
+          backgroundColor: theme.textSecondary,
+          transform: [{ rotate: '35deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.64,
+          top: size * 0.02,
+          width: size * 0.22,
+          height: size * 0.22,
+          borderRadius: size * 0.11,
+          backgroundColor: theme.pieces.L,
+        }}
+      />
+    </View>
+  );
 }
 
 const BoardCell = memo(function BoardCell({ type, ghost, size }: CellProps) {
@@ -32,7 +101,8 @@ const BoardCell = memo(function BoardCell({ type, ghost, size }: CellProps) {
   if (type === null) {
     return <View style={[styles.cell, styles.empty, { width: size, height: size }]} />;
   }
-  const color = theme.pieces[type];
+  if (type === 'B') return <BombCell ghost={ghost} size={size} />;
+  const color = type === 'G' ? theme.garbage : theme.pieces[type];
   if (ghost) {
     return (
       <View
@@ -55,7 +125,7 @@ const BoardCell = memo(function BoardCell({ type, ghost, size }: CellProps) {
 });
 
 interface DisplayCell {
-  type: TetrominoType | null;
+  type: Cell | PieceType;
   ghost: boolean;
 }
 
@@ -139,7 +209,7 @@ function LockEffect({ info, cellSize }: { info: LockInfo; cellSize: number }) {
   const rise = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -cellSize * 0.3] });
   const dust = progress.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] });
   const trail = progress.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] });
-  const color = theme.pieces[info.type];
+  const color = info.type === 'B' ? theme.pieces.L : theme.pieces[info.type];
 
   const nodes: React.ReactNode[] = [];
   bottoms.forEach(([r, c]) => {
@@ -190,6 +260,75 @@ function LockEffect({ info, cellSize }: { info: LockInfo; cellSize: number }) {
     });
   }
   return <>{nodes}</>;
+}
+
+/** The explosion: a ring that grows from the blast cell, and eight sparks flying outwards. */
+function BlastEffect({ info, cellSize }: { info: BlastInfo; cellSize: number }) {
+  const { theme } = useApp();
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 650,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [progress]);
+
+  const cx = info.col * cellSize + cellSize / 2;
+  const cy = info.row * cellSize + cellSize / 2;
+  const ring = cellSize * 3;
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.3] });
+  const fade = progress.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.9, 0] });
+  const spark = cellSize * 0.26;
+  const fly = progress.interpolate({ inputRange: [0, 1], outputRange: [0, cellSize * 1.9] });
+
+  const sparks = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i * Math.PI) / 4;
+    return (
+      <Animated.View
+        key={i}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: cx - spark / 2,
+          top: cy - spark / 2,
+          width: spark,
+          height: spark,
+          borderRadius: spark / 2,
+          backgroundColor: i % 2 === 0 ? theme.pieces.L : theme.textPrimary,
+          opacity: fade,
+          transform: [
+            { translateX: Animated.multiply(fly, Math.cos(angle)) },
+            { translateY: Animated.multiply(fly, Math.sin(angle)) },
+          ],
+        }}
+      />
+    );
+  });
+
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: cx - ring / 2,
+          top: cy - ring / 2,
+          width: ring,
+          height: ring,
+          borderRadius: ring / 2,
+          borderWidth: 3,
+          borderColor: theme.pieces.L,
+          backgroundColor: 'rgba(247, 232, 236, 0.18)',
+          opacity: fade,
+          transform: [{ scale }],
+        }}
+      />
+      {sparks}
+    </>
+  );
 }
 
 /** A soft band of light that runs from the bottom of the board to the top at a level-up. */
@@ -295,6 +434,8 @@ function Board({
   gameOver,
   lock,
   levelWave,
+  blast,
+  slowFraction,
 }: BoardProps) {
   const { theme } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -303,9 +444,11 @@ function Board({
   // Three or more rows at once make the whole board shake; a tetris shakes harder.
   const shake = useRef(new Animated.Value(0)).current;
   const clearCount = clearingRows.length;
+  const blastId = blast?.id ?? 0;
   useEffect(() => {
-    if (clearCount < 3) return;
-    const a = clearCount >= 4 ? 9 : 5;
+    // Three or more rows shake the board; a bomb blast shakes it hardest.
+    if (clearCount < 3 && blastId === 0) return;
+    const a = blastId > 0 && clearCount < 3 ? 10 : clearCount >= 4 ? 9 : 5;
     Animated.sequence([
       Animated.timing(shake, { toValue: -a, duration: 40, useNativeDriver: true }),
       Animated.timing(shake, { toValue: a, duration: 55, useNativeDriver: true }),
@@ -313,7 +456,7 @@ function Board({
       Animated.timing(shake, { toValue: a * 0.4, duration: 50, useNativeDriver: true }),
       Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
-  }, [clearCount, shake]);
+  }, [clearCount, blastId, shake]);
 
   return (
     <Animated.View
@@ -333,6 +476,21 @@ function Board({
           ))}
         </View>
       ))}
+      {blast && <BlastEffect key={blast.id} info={blast} cellSize={cellSize} />}
+      {slowFraction > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            height: 4,
+            width: cellSize * BOARD_COLS * slowFraction,
+            backgroundColor: theme.textPrimary,
+            opacity: 0.8,
+          }}
+        />
+      )}
       {lock && <LockEffect key={lock.id} info={lock} cellSize={cellSize} />}
       {levelWave > 0 && <LevelWave key={levelWave} cellSize={cellSize} />}
       {gameOver && <GameOverHaze cellSize={cellSize} />}

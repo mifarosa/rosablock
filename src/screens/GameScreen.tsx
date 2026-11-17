@@ -13,7 +13,7 @@ import { maybeShowInterstitial } from '../ads/interstitial';
 import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
-import ClearToast, { LevelToast } from '../components/ClearToast';
+import ClearToast, { BannerToast } from '../components/ClearToast';
 import Controls from '../components/Controls';
 import { Dialog, DialogButton, DialogSwitch, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
@@ -21,13 +21,14 @@ import SwapIcon from '../components/SwapIcon';
 import ScoreBoard from '../components/ScoreBoard';
 import ThemeBackground from '../components/ThemeBackground';
 import type { ThemeColors } from '../constants/colors';
-import type { GameMode } from '../constants/modes';
+import { PARTY_SLOW_MS, type DigDifficulty, type GameMode } from '../constants/modes';
 import type { StringKey } from '../i18n/strings';
 import { BOARD_COLS, BOARD_ROWS } from '../constants/tetrominos';
 import { canRevive, upcoming, useTetris, type ClearInfo, type GameState } from '../hooks/useTetris';
 import { formatTime } from '../utils/format';
 import { clearGame, isPristine, saveGame } from '../utils/saves';
 import {
+  blastHaptic,
   holdHaptic,
   dropHaptic,
   finishHaptic,
@@ -42,6 +43,8 @@ interface GameScreenProps {
   mode: GameMode;
   /** A saved game to continue (it opens paused), or null for a fresh game. */
   initialState: GameState | null;
+  /** Dig: the difficulty of a fresh game. */
+  difficulty?: DigDifficulty;
   onExit: () => void;
   onScoresChanged: (scores: HighScores) => void;
 }
@@ -56,13 +59,14 @@ const BOARD_BORDER = 2;
 export default function GameScreen({
   mode,
   initialState,
+  difficulty,
   onExit,
   onScoresChanged,
 }: GameScreenProps) {
   const { theme, t, settings, update } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { controlMode, controlSide } = settings;
-  const game = useTetris(mode, initialState);
+  const game = useTetris(mode, initialState, difficulty);
   const { state } = game;
   const { width, height } = useWindowDimensions();
   const [isNewBest, setIsNewBest] = useState(false);
@@ -153,7 +157,7 @@ export default function GameScreen({
   const exitToMenu = async () => {
     const s = latest.current;
     const unfinished = s.status !== 'over' && s.status !== 'finished';
-    if (unfinished && mode !== 'sprint' && s.score > 0) {
+    if (unfinished && mode !== 'sprint' && mode !== 'dig' && s.score > 0) {
       const { scores, isNewBest: best } = await saveResult({
         mode,
         score: s.score,
@@ -208,6 +212,26 @@ export default function GameScreen({
     if (droppedRef.current) droppedRef.current = false;
     else playSound('land');
   }, [state.grid, state.clearingRows]);
+
+  // Party: a banner (and a sound) when a bomb is earned or the slow-down starts, and the blast.
+  const [powerBanner, setPowerBanner] = useState<{ id: number; text: string } | null>(null);
+  useEffect(() => {
+    const clear = state.lastClear;
+    if (!clear || (!clear.bomb && !clear.slow)) return undefined;
+    const text = [clear.bomb ? t('toast.bomb') : null, clear.slow ? t('toast.slow') : null]
+      .filter(Boolean)
+      .join(' · ');
+    if (clear.bomb) playSound('bomb');
+    else playSound('slow');
+    setPowerBanner({ id: clear.id, text });
+    const id = setTimeout(() => setPowerBanner(null), 1600);
+    return () => clearTimeout(id);
+  }, [state.lastClear, t]);
+  useEffect(() => {
+    if (!state.lastBlast) return;
+    playSound('boom');
+    blastHaptic();
+  }, [state.lastBlast]);
 
   // Level-up: a wave of light on the board, a banner and a sound.
   const prevLevel = useRef(state.level);
@@ -281,6 +305,7 @@ export default function GameScreen({
       lines: state.lines,
       timeMs: state.elapsedMs,
       completed: state.status === 'finished',
+      difficulty: state.difficulty,
     }).then(({ scores, isNewBest: best }) => {
       setIsNewBest(best);
       onScoresChanged(scores);
@@ -342,6 +367,8 @@ export default function GameScreen({
       gameOver={state.status === 'over'}
       lock={state.lastLock}
       levelWave={levelWave}
+      blast={state.lastBlast}
+      slowFraction={mode === 'party' ? Math.min(1, state.slowMsLeft / PARTY_SLOW_MS) : 0}
     />
   );
 
@@ -354,6 +381,7 @@ export default function GameScreen({
       elapsedMs={state.elapsedMs}
       upcoming={upcoming(state)}
       held={state.held}
+      junkRows={mode === 'dig' ? state.grid.filter((row) => row.includes('G')).length : null}
       holdUsed={state.holdUsed}
       onHold={holdPiece}
       layout={layout}
@@ -470,7 +498,19 @@ export default function GameScreen({
             { top: insets.top + HEADER_HEIGHT + SECTION_GAP + boardHeight * 0.58 },
           ]}
         >
-          <LevelToast key={levelBanner} level={levelBanner} />
+          <BannerToast key={levelBanner} text={t('toast.level', { n: levelBanner })} />
+        </View>
+      )}
+
+      {powerBanner && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.toastWrap,
+            { top: insets.top + HEADER_HEIGHT + SECTION_GAP + boardHeight * 0.76 },
+          ]}
+        >
+          <BannerToast key={powerBanner.id} text={powerBanner.text} />
         </View>
       )}
 

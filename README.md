@@ -6,11 +6,13 @@ A calm, nostalgic Tetris for iOS and Android, built with React Native (Expo). So
 
 ## Features
 
-- **Four modes**
+- **Six modes**
   - **Marathon**: classic, 15 levels; speed rises as you clear lines; ends at 150 lines.
   - **Sprint**: clear 40 lines as fast as you can (timed).
   - **Calm**: no speed-ups, play at your own pace; it ends when the board fills up.
   - **Ultra**: score as much as you can in 2 minutes.
+  - **Party**: clear lines with three pieces in a row and the next piece is a bomb (it clears the 3x3 area where it lands); clearing four rows slows time down for 10 seconds.
+  - **Dig**: the board starts with junk rows (6, 10 or 14, by difficulty); clear them all as fast as you can.
 - **Two ways to play**
   - **Gestures** (full screen): tap to rotate, drag sideways to move, hold to drop, speeding up the longer you hold, flick down to hard drop.
   - **Buttons**: a compact 2x2 pad next to a status box, built for one thumb; a small ⇄ button swaps the sides.

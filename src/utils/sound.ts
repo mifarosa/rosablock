@@ -18,6 +18,9 @@ const VOLUMES: Record<SoundName, number> = {
   finished: 0.7,
   tick: 0.5,
   go: 0.6,
+  boom: 0.8,
+  bomb: 0.55,
+  slow: 0.5,
 };
 const MUSIC_VOLUME = 0.22;
 /** Players per effect, taken in turn: one that is still playing (or rewinding) is not reused. */

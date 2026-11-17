@@ -55,6 +55,8 @@ export default function HowToPlayScreen({ onClose, first = false }: HowToPlayScr
         {section('howto.hold.title', 'howto.hold.text')}
         {section('howto.score.title', 'howto.score.text')}
         {section('howto.lock.title', 'howto.lock.text')}
+        {section('howto.party.title', 'howto.party.text')}
+        {section('howto.dig.title', 'howto.dig.text')}
         {section('howto.ad.title', 'howto.ad.text')}
       </ScrollView>
 

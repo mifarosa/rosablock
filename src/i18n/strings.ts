@@ -15,6 +15,14 @@ const tr = {
   'mode.ultra.subtitle': '2 dakika',
   'mode.ultra.description': '2 dakikada olabildiğince çok puan topla.',
 
+  'mode.party.title': 'Şenlik',
+  'mode.party.subtitle': 'Bomba · yavaşlatma',
+  'mode.party.description':
+    'Üst üste 3 parçayla satır temizle, sıradaki parça bomba olsun. 4 satır yapınca zaman yavaşlar.',
+  'mode.dig.title': 'Kazı',
+  'mode.dig.subtitle': 'Çöp satırlar',
+  'mode.dig.description': 'Alttaki çöp satırların hepsini en kısa sürede temizle.',
+
   'home.tagline': 'sakin · çevrimdışı',
   'home.pickMode': 'MOD SEÇ',
   'home.best': 'EN İYİLER',
@@ -103,6 +111,24 @@ const tr = {
   'howto.ad.text':
     'Oyun bitince bir reklam izleyerek oyuna bir kez devam edebilirsin: tahtanın üst yarısı silinir.',
 
+  'home.classic': 'KLASİK',
+  'home.fun': 'EĞLENCE',
+  'dig.easy': 'Kolay',
+  'dig.normal': 'Normal',
+  'dig.hard': 'Zor',
+  'dig.pick': 'Zorluk seç',
+  'dig.pickText': 'Kaç çöp satırı: kolay 6, normal 10, zor 14.',
+  'dig.best': 'Kazı · {level}',
+  'stat.junk': 'ÇÖP',
+  'toast.bomb': 'BOMBA!',
+  'toast.slow': 'YAVAŞLATMA!',
+  'howto.party.title': 'Şenlik modu',
+  'howto.party.text':
+    'Üst üste 3 parçayla satır temizlersen sıradaki parça bir bomba olur. Bomba yere değince çevresindeki 3×3 alanı siler. 4 satır temizlersen 10 saniye zaman yavaşlar.',
+  'howto.dig.title': 'Kazı modu',
+  'howto.dig.text':
+    'Tahta çöp satırlarla başlar. Hepsini temizlediğinde biter, en kısa süre kaydedilir. Zorluk, çöp satırı sayısını ve hızı belirler.',
+
   'a11y.left': 'Sola',
   'a11y.right': 'Sağa',
   'a11y.down': 'Aşağı',
@@ -146,6 +172,14 @@ const en: Record<StringKey, string> = {
   'mode.ultra.title': 'Ultra',
   'mode.ultra.subtitle': '2 minutes',
   'mode.ultra.description': 'Score as much as you can in 2 minutes.',
+
+  'mode.party.title': 'Party',
+  'mode.party.subtitle': 'Bombs · slow-down',
+  'mode.party.description':
+    'Clear lines with three pieces in a row and the next piece is a bomb. Clear four rows to slow time down.',
+  'mode.dig.title': 'Dig',
+  'mode.dig.subtitle': 'Junk rows',
+  'mode.dig.description': 'Clear every junk row at the bottom as fast as you can.',
 
   'home.tagline': 'calm · offline',
   'home.pickMode': 'PICK A MODE',
@@ -234,6 +268,24 @@ const en: Record<StringKey, string> = {
   'howto.ad.title': 'Continue',
   'howto.ad.text':
     'When the game ends you can watch an ad to continue once: the top half of the board is cleared.',
+
+  'home.classic': 'CLASSIC',
+  'home.fun': 'FUN',
+  'dig.easy': 'Easy',
+  'dig.normal': 'Normal',
+  'dig.hard': 'Hard',
+  'dig.pick': 'Pick a difficulty',
+  'dig.pickText': 'Junk rows: easy 6, normal 10, hard 14.',
+  'dig.best': 'Dig · {level}',
+  'stat.junk': 'JUNK',
+  'toast.bomb': 'BOMB!',
+  'toast.slow': 'SLOW-DOWN!',
+  'howto.party.title': 'Party mode',
+  'howto.party.text':
+    'Clear lines with three pieces in a row and the next piece is a bomb. When it lands it clears the 3x3 area around it. Clear four rows and time slows down for 10 seconds.',
+  'howto.dig.title': 'Dig mode',
+  'howto.dig.text':
+    'The board starts with junk rows. Clear them all to finish; your fastest time is saved. The difficulty sets how many junk rows there are and how fast the pieces fall.',
 
   'a11y.left': 'Left',
   'a11y.right': 'Right',

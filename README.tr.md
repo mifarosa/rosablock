@@ -6,11 +6,13 @@ React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir T
 
 ## Özellikler
 
-- **Dört mod**
+- **Altı mod**
   - **Maraton**: klasik, 15 seviye; satır temizledikçe hız artar; 150 satırda biter.
   - **Sprint**: 40 satırı en kısa sürede temizle (süre tutulur).
   - **Huzur**: hızlanma yok, kendi hızında oyna; tahta dolunca biter.
   - **Ultra**: 2 dakikada olabildiğince çok puan topla.
+  - **Şenlik**: üst üste 3 parçayla satır temizlersen sıradaki parça bir bomba olur (indiği yerde 3×3 alanı siler); 4 satır temizlersen zaman 10 saniye yavaşlar.
+  - **Kazı**: tahta çöp satırlarla başlar (zorluğa göre 6, 10 ya da 14); hepsini en kısa sürede temizle.
 - **İki oynama biçimi**
   - **Tuşsuz** (tam ekran): dokun = döndür, yana kaydır = hareket, basılı tut = hızlanarak in, aşağı fiske = çat diye indir.
   - **Tuşlar**: durum kutusunun yanında kompakt 2x2 tuş kümesi, tek başparmakla oynamak için; küçük ⇄ tuşu tarafları değiştirir.

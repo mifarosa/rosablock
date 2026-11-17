@@ -1,6 +1,8 @@
 // Tetromino shapes, SRS rotation states and SRS wall-kick tables.
 
 export type TetrominoType = 'I' | 'J' | 'L' | 'O' | 'S' | 'T' | 'Z';
+/** The seven pieces, plus the single-block bomb of the Party mode. */
+export type PieceType = TetrominoType | 'B';
 export type Matrix = number[][];
 export type Rotation = 0 | 1 | 2 | 3;
 
@@ -79,8 +81,10 @@ export const SHAPES: Record<TetrominoType, Matrix[]> = {
   Z: buildRotations(BASE_SHAPES.Z),
 };
 
-export function getMatrix(type: TetrominoType, rotation: Rotation): Matrix {
-  return SHAPES[type][rotation]!;
+const BOMB_MATRIX: Matrix = [[1]];
+
+export function getMatrix(type: PieceType, rotation: Rotation): Matrix {
+  return type === 'B' ? BOMB_MATRIX : SHAPES[type][rotation]!;
 }
 
 type Kick = readonly [number, number]; // [dx, dy], SRS convention: +x right, +y UP
@@ -109,8 +113,8 @@ const KICKS_I: Record<string, readonly Kick[]> = {
 };
 
 /** Returns kick offsets as [dCol, dRow] (row axis points DOWN, as in the grid). */
-export function getKicks(type: TetrominoType, from: Rotation, to: Rotation): [number, number][] {
-  if (type === 'O') return [[0, 0]];
+export function getKicks(type: PieceType, from: Rotation, to: Rotation): [number, number][] {
+  if (type === 'O' || type === 'B') return [[0, 0]];
   const table = type === 'I' ? KICKS_I : KICKS_JLSTZ;
   const list = table[`${from}${to}`] ?? [[0, 0]];
   return list.map(([dx, dy]) => [dx, -dy] as [number, number]);
