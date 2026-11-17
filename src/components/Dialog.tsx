@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useApp } from '../app/AppContext';
 import type { ThemeColors } from '../constants/colors';
 
@@ -19,6 +19,32 @@ export function Dialog({ title, children }: { title: string; children: React.Rea
 export function DialogText({ children }: { children: React.ReactNode }) {
   const styles = useStyles();
   return <Text style={styles.text}>{children}</Text>;
+}
+
+/** A labelled on/off switch for quick settings inside a dialog. */
+export function DialogSwitch({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  const { theme } = useApp();
+  const styles = useStyles();
+  return (
+    <View style={styles.switchRow}>
+      <Text style={styles.switchLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ false: theme.border, true: theme.textSecondary }}
+        thumbColor={theme.textPrimary}
+        ios_backgroundColor={theme.border}
+      />
+    </View>
+  );
 }
 
 export function DialogButton({
@@ -92,6 +118,13 @@ const makeStyles = (c: ThemeColors) =>
     borderWidth: 2,
   },
   buttonPressed: { opacity: 0.7 },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  switchLabel: { color: c.textPrimary, fontSize: 15, fontWeight: '600' },
   buttonText: { color: c.background, fontSize: 16, fontWeight: '700' },
   buttonTextSecondary: { color: c.textPrimary },
 });

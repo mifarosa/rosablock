@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { privacyOptionsRequired, showPrivacyOptions } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Segment from '../components/Segment';
 import ThemeBackground from '../components/ThemeBackground';
 import { THEMES, THEME_IDS, type ThemeColors } from '../constants/colors';
+import { PRIVACY_URL } from '../constants/links';
 import { LANGUAGES, type StringKey } from '../i18n/strings';
 
 interface SettingsScreenProps {
@@ -95,6 +96,14 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           })}
         </View>
 
+        <Text style={styles.section}>{t('settings.colorblind')}</Text>
+        <Segment
+          options={onOff}
+          value={settings.colorblind}
+          onChange={(colorblind) => update({ colorblind })}
+        />
+        <Text style={styles.hint}>{t('settings.colorblindHint')}</Text>
+
         <Text style={styles.section}>{t('settings.controls')}</Text>
         <Segment
           options={[
@@ -118,6 +127,15 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
         <Text style={styles.section}>{t('settings.music')}</Text>
         <Segment options={onOff} value={settings.music} onChange={(music) => update({ music })} />
+
+        <Text style={styles.section}>{t('settings.privacy')}</Text>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => void Linking.openURL(PRIVACY_URL).catch(() => {})}
+          style={styles.linkButton}
+        >
+          <Text style={styles.linkText}>{t('settings.privacyButton')}</Text>
+        </Pressable>
 
         {showAdPrivacy && (
           <>

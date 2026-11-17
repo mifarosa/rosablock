@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { THEMES, type ThemeColors } from '../constants/colors';
+import { COLORBLIND_PIECES, THEMES, type ThemeColors } from '../constants/colors';
 import { translate, type Translate } from '../i18n/strings';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../settings/settings';
 import { setHapticsEnabled } from '../utils/haptics';
@@ -49,7 +49,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       settings,
       update,
-      theme: THEMES[settings.theme],
+      theme: settings.colorblind
+        ? { ...THEMES[settings.theme], pieces: COLORBLIND_PIECES }
+        : THEMES[settings.theme],
       t: (key, params) => translate(settings.language, key, params),
     }),
     [settings, update],

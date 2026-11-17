@@ -16,6 +16,7 @@ interface HomeScreenProps {
   savedGames: SavedGames;
   onSelectMode: (mode: GameMode) => void;
   onOpenSettings: () => void;
+  onOpenHowTo: () => void;
 }
 
 function scoreLabel(mode: GameMode, scores: HighScores): string {
@@ -29,6 +30,7 @@ export default function HomeScreen({
   savedGames,
   onSelectMode,
   onOpenSettings,
+  onOpenHowTo,
 }: HomeScreenProps) {
   const { theme, t } = useApp();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -39,21 +41,6 @@ export default function HomeScreen({
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <ThemeBackground />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('home.settings')}
-        onPress={onOpenSettings}
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.gear,
-          { top: insets.top + 10 },
-          pressed && styles.gearPressed,
-        ]}
-      >
-        {({ pressed }) => (
-          <GearIcon color={pressed ? theme.textPrimary : theme.textSecondary} />
-        )}
-      </Pressable>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>ROSABLOCK</Text>
         <Text style={styles.tagline}>{t('home.tagline')}</Text>
@@ -95,6 +82,29 @@ export default function HomeScreen({
             </View>
           ))}
         </View>
+
+        <View style={styles.footerRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenSettings}
+            style={({ pressed }) => [styles.footerButton, pressed && styles.footerPressed]}
+          >
+            {({ pressed }) => (
+              <>
+                <GearIcon size={22} color={pressed ? theme.textPrimary : theme.textSecondary} />
+                <Text style={styles.footerText}>{t('home.settings')}</Text>
+              </>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenHowTo}
+            style={({ pressed }) => [styles.footerButton, pressed && styles.footerPressed]}
+          >
+            <Text style={styles.infoGlyph}>i</Text>
+            <Text style={styles.footerText}>{t('home.howTo')}</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -103,20 +113,33 @@ export default function HomeScreen({
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: c.background },
-    gear: {
-      position: 'absolute',
-      right: 16,
-      zIndex: 2,
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: c.boardBg,
-      borderWidth: 2,
-      borderColor: c.border,
+    footerRow: { flexDirection: 'row', gap: 10, marginTop: 24 },
+    footerButton: {
+      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 10,
+      backgroundColor: c.boardBg,
+      borderColor: c.border,
+      borderWidth: 2,
+      borderRadius: 10,
+      paddingVertical: 14,
     },
-    gearPressed: { backgroundColor: c.border, borderColor: c.textSecondary },
+    footerPressed: { backgroundColor: c.border, borderColor: c.textSecondary },
+    footerText: { color: c.textPrimary, fontSize: 14, fontWeight: '700' },
+    infoGlyph: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 2,
+      borderColor: c.textSecondary,
+      color: c.textSecondary,
+      textAlign: 'center',
+      fontSize: 13,
+      fontWeight: '800',
+      lineHeight: 18,
+    },
     content: { padding: 20, paddingBottom: 40 },
     title: {
       color: c.textPrimary,

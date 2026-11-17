@@ -56,6 +56,54 @@ const tr = {
   'stat.time': 'SÜRE',
   'stat.left': 'KALAN',
 
+  'home.howTo': 'Nasıl oynanır',
+
+  'settings.colorblind': 'RENK KÖRLÜĞÜ MODU',
+  'settings.colorblindHint': 'Parçalar birbirinden kolay ayırt edilen renklerle çizilir.',
+  'settings.privacy': 'GİZLİLİK',
+  'settings.privacyButton': 'Gizlilik politikası',
+
+  'game.sound': 'Ses efektleri',
+  'game.music': 'Müzik',
+  'game.howTo': 'Nasıl oynanır',
+  'game.nextLabel': 'Sıradaki parçalar',
+
+  'toast.double': 'ÇİFT',
+  'toast.triple': 'ÜÇLÜ',
+  'toast.tetris': 'TETRİS!',
+  'toast.combo': 'KOMBO ×{n}',
+  'toast.backToBack': 'ARKA ARKAYA',
+  'toast.perfect': 'MÜKEMMEL TEMİZLİK!',
+
+  'howto.title': 'Nasıl oynanır',
+  'howto.gotIt': 'Anladım',
+  'howto.close': 'Kapat',
+  'howto.goal.title': 'Amaç',
+  'howto.goal.text':
+    'Düşen parçaları yerleştir, satırları doldurup temizle. Tahta tepeye kadar dolarsa oyun biter.',
+  'howto.controls.title': 'Kontroller',
+  'howto.gestures.tap': 'Dokun: parçayı döndürür',
+  'howto.gestures.swipe': 'Yana kaydır: parçayı yana götürür',
+  'howto.gestures.hold': 'Basılı tut: parça aşağı iner, tuttukça hızlanır',
+  'howto.gestures.flick': 'Hızlı aşağı fiske: parçayı çat diye indirir',
+  'howto.buttons.moves': '◀ ▶  parçayı yana götürür',
+  'howto.buttons.rotate': '↻  parçayı döndürür',
+  'howto.buttons.down': '▼  aşağı indirir (basılı tutunca hızlanır)',
+  'howto.buttons.swap': '⇄  tuşları ekranın diğer yanına alır',
+  'howto.controls.change': 'Kontrolü Ayarlar\'dan değiştirebilirsin.',
+  'howto.hold.title': 'Parçayı tut',
+  'howto.hold.text':
+    'TUT kutusuna dokun: düşen parça kenara geçer. Bir sonraki sefer tuttuğun parçayla yer değiştirir. Her parça için bir kez.',
+  'howto.score.title': 'Puan',
+  'howto.score.text':
+    '1 satır 100, 2 satır 300, 3 satır 500, 4 satır (Tetris) 800 puan, seviye ile çarpılır. Art arda satır temizlersen kombo, arka arkaya Tetris ×1,5, tahtayı bomboş bırakırsan büyük bonus gelir.',
+  'howto.lock.title': 'Son an',
+  'howto.lock.text':
+    'Parça bir yere değince hemen kilitlenmez: yarım saniye içinde yana kaydırıp döndürebilirsin.',
+  'howto.ad.title': 'Devam',
+  'howto.ad.text':
+    'Oyun bitince bir reklam izleyerek oyuna bir kez devam edebilirsin: tahtanın üst yarısı silinir.',
+
   'a11y.left': 'Sola',
   'a11y.right': 'Sağa',
   'a11y.down': 'Aşağı',
@@ -139,6 +187,54 @@ const en: Record<StringKey, string> = {
   'stat.level': 'LEVEL',
   'stat.time': 'TIME',
   'stat.left': 'LEFT',
+
+  'home.howTo': 'How to play',
+
+  'settings.colorblind': 'COLORBLIND COLORS',
+  'settings.colorblindHint': 'Pieces use colors that are easy to tell apart.',
+  'settings.privacy': 'PRIVACY',
+  'settings.privacyButton': 'Privacy policy',
+
+  'game.sound': 'Sound effects',
+  'game.music': 'Music',
+  'game.howTo': 'How to play',
+  'game.nextLabel': 'Upcoming pieces',
+
+  'toast.double': 'DOUBLE',
+  'toast.triple': 'TRIPLE',
+  'toast.tetris': 'TETRIS!',
+  'toast.combo': 'COMBO ×{n}',
+  'toast.backToBack': 'BACK-TO-BACK',
+  'toast.perfect': 'PERFECT CLEAR!',
+
+  'howto.title': 'How to play',
+  'howto.gotIt': 'Got it',
+  'howto.close': 'Close',
+  'howto.goal.title': 'Goal',
+  'howto.goal.text':
+    'Place the falling pieces and fill rows to clear them. If the stack reaches the top, the game is over.',
+  'howto.controls.title': 'Controls',
+  'howto.gestures.tap': 'Tap: rotates the piece',
+  'howto.gestures.swipe': 'Swipe sideways: moves the piece',
+  'howto.gestures.hold': 'Press and hold: the piece drops, faster the longer you hold',
+  'howto.gestures.flick': 'Flick down fast: drops the piece at once',
+  'howto.buttons.moves': '◀ ▶  move the piece sideways',
+  'howto.buttons.rotate': '↻  rotates the piece',
+  'howto.buttons.down': '▼  drops the piece (hold it to speed up)',
+  'howto.buttons.swap': '⇄  moves the buttons to the other side of the screen',
+  'howto.controls.change': 'You can change the controls in Settings.',
+  'howto.hold.title': 'Hold a piece',
+  'howto.hold.text':
+    'Tap the HOLD box to set the falling piece aside. Next time it swaps with the piece you held. Once per piece.',
+  'howto.score.title': 'Score',
+  'howto.score.text':
+    '1 row 100, 2 rows 300, 3 rows 500, 4 rows (Tetris) 800 points, times your level. Clearing rows with consecutive pieces gives a combo, back-to-back Tetrises score x1.5, and emptying the whole board gives a big bonus.',
+  'howto.lock.title': 'Last moment',
+  'howto.lock.text':
+    'A piece does not lock the moment it lands: you have half a second to slide and rotate it.',
+  'howto.ad.title': 'Continue',
+  'howto.ad.text':
+    'When the game ends you can watch an ad to continue once: the top half of the board is cleared.',
 
   'a11y.left': 'Left',
   'a11y.right': 'Right',

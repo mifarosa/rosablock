@@ -5,12 +5,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { maybeShowInterstitial } from './src/ads/interstitial';
 import { startAds } from './src/ads/rewarded';
 import { AppProvider, useApp } from './src/app/AppContext';
+import ErrorBoundary from './src/app/ErrorBoundary';
 import { Dialog, DialogButton, DialogText } from './src/components/Dialog';
 import type { GameMode } from './src/constants/modes';
 import type { GameState } from './src/hooks/useTetris';
 import type { StringKey } from './src/i18n/strings';
 import GameScreen from './src/screens/GameScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import HowToPlayScreen from './src/screens/HowToPlayScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { clearGame, loadSavedGames, type SavedGames } from './src/utils/saves';
 import { EMPTY_HIGH_SCORES, loadHighScores, type HighScores } from './src/utils/storage';
@@ -18,12 +20,16 @@ import { EMPTY_HIGH_SCORES, loadHighScores, type HighScores } from './src/utils/
 type Screen =
   | { name: 'home' }
   | { name: 'settings' }
+  | { name: 'howto'; first: boolean }
   // `initial` is a saved game to continue, or null for a fresh one.
   | { name: 'game'; mode: GameMode; initial: GameState | null };
 
 function Root() {
-  const { theme, t } = useApp();
-  const [screen, setScreen] = useState<Screen>({ name: 'home' });
+  const { theme, t, settings, update } = useApp();
+  // The how-to-play page opens by itself the very first time.
+  const [screen, setScreen] = useState<Screen>(() =>
+    settings.seenHowTo ? { name: 'home' } : { name: 'howto', first: true },
+  );
   const [highScores, setHighScores] = useState<HighScores>(EMPTY_HIGH_SCORES);
   const [savedGames, setSavedGames] = useState<SavedGames>({});
   // A mode with a saved game asks (in the app's own dialog) whether to continue or start over.
@@ -94,9 +100,19 @@ function Root() {
           savedGames={savedGames}
           onSelectMode={handleSelectMode}
           onOpenSettings={() => setScreen({ name: 'settings' })}
+          onOpenHowTo={() => setScreen({ name: 'howto', first: false })}
         />
       )}
       {screen.name === 'settings' && <SettingsScreen onBack={() => setScreen({ name: 'home' })} />}
+      {screen.name === 'howto' && (
+        <HowToPlayScreen
+          first={screen.first}
+          onClose={() => {
+            if (!settings.seenHowTo) update({ seenHowTo: true });
+            setScreen({ name: 'home' });
+          }}
+        />
+      )}
       {screen.name === 'game' && (
         <GameScreen
           key={screen.mode}
@@ -123,9 +139,11 @@ function Root() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <Root />
-      </AppProvider>
+      <ErrorBoundary>
+        <AppProvider>
+          <Root />
+        </AppProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

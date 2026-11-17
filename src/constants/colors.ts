@@ -78,3 +78,17 @@ const mint: ThemeColors = {
 export const THEMES: Record<ThemeId, ThemeColors> = { rose, lavender, mint };
 export const THEME_IDS: readonly ThemeId[] = ['rose', 'lavender', 'mint'];
 export const DEFAULT_THEME: ThemeId = 'rose';
+
+/**
+ * Piece colors for the colorblind-friendly option: seven hues from the Okabe-Ito set (chosen to
+ * stay apart for the common kinds of color blindness), lightened a little for dark backgrounds.
+ */
+export const COLORBLIND_PIECES: Record<TetrominoType, string> = {
+  I: '#7CC4EE', // sky blue
+  J: '#4C8FD6', // blue
+  L: '#F0A53A', // orange
+  O: '#F2E86D', // yellow
+  S: '#4DBF9A', // bluish green
+  T: '#D88AB8', // reddish purple
+  Z: '#E0703E', // vermillion
+};

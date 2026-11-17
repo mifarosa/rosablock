@@ -14,7 +14,7 @@ import { watchRewardedAd } from '../ads/rewarded';
 import { useApp } from '../app/AppContext';
 import Board from '../components/Board';
 import Controls from '../components/Controls';
-import { Dialog, DialogButton, DialogText } from '../components/Dialog';
+import { Dialog, DialogButton, DialogSwitch, DialogText } from '../components/Dialog';
 import GestureArea from '../components/GestureArea';
 import SwapIcon from '../components/SwapIcon';
 import ScoreBoard from '../components/ScoreBoard';
@@ -33,6 +33,7 @@ import {
   gameOverHaptic,
   lineClearHaptic,
 } from '../utils/haptics';
+import HowToPlayScreen from './HowToPlayScreen';
 import { pauseMusic, playSound, startMusic } from '../utils/sound';
 import { saveResult, type HighScores } from '../utils/storage';
 
@@ -276,6 +277,7 @@ export default function GameScreen({
   };
 
   // Rewarded ad: one continue per game. The top half of the board is cleared, then 3-2-1.
+  const [showHowTo, setShowHowTo] = useState(false);
   const [adBusy, setAdBusy] = useState(false);
   const [adMessage, setAdMessage] = useState<string | null>(null);
   const offerRevive = state.status === 'over' && canRevive(state);
@@ -416,7 +418,13 @@ export default function GameScreen({
         </View>
       )}
 
-      {(showPauseDialog || ended) && (
+      {showHowTo && (
+        <View style={StyleSheet.absoluteFill}>
+          <HowToPlayScreen onClose={() => setShowHowTo(false)} />
+        </View>
+      )}
+
+      {(showPauseDialog || ended) && !showHowTo && (
         <Dialog title={showPauseDialog ? t('game.paused') : endTitle}>
           {ended && (
             <View style={styles.summary}>
@@ -433,6 +441,20 @@ export default function GameScreen({
             />
           )}
           {adMessage !== null && <DialogText>{adMessage}</DialogText>}
+          {showPauseDialog && (
+            <>
+              <DialogSwitch
+                label={t('game.sound')}
+                value={settings.sound}
+                onChange={(sound) => update({ sound })}
+              />
+              <DialogSwitch
+                label={t('game.music')}
+                value={settings.music}
+                onChange={(music) => update({ music })}
+              />
+            </>
+          )}
           {showPauseDialog ? (
             <DialogButton label={t('common.continue')} onPress={game.togglePause} />
           ) : (
@@ -443,6 +465,9 @@ export default function GameScreen({
             />
           )}
           {showPauseDialog && <DialogButton label={t('game.restart')} onPress={restart} secondary />}
+          {showPauseDialog && (
+            <DialogButton label={t('game.howTo')} onPress={() => setShowHowTo(true)} secondary />
+          )}
           <DialogButton label={t('game.mainMenu')} onPress={() => void exitToMenu()} secondary />
         </Dialog>
       )}

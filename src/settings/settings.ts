@@ -14,6 +14,10 @@ export interface Settings {
   haptics: boolean;
   sound: boolean;
   music: boolean;
+  /** Use the colorblind-friendly piece colors. */
+  colorblind: boolean;
+  /** The "how to play" screen has been shown (it opens by itself the first time). */
+  seenHowTo: boolean;
 }
 
 export function defaultSettings(): Settings {
@@ -25,6 +29,8 @@ export function defaultSettings(): Settings {
     haptics: true,
     sound: true,
     music: true,
+    colorblind: false,
+    seenHowTo: false,
   };
 }
 
@@ -46,6 +52,8 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (typeof r.haptics === 'boolean') out.haptics = r.haptics;
   if (typeof r.sound === 'boolean') out.sound = r.sound;
   if (typeof r.music === 'boolean') out.music = r.music;
+  if (typeof r.colorblind === 'boolean') out.colorblind = r.colorblind;
+  if (typeof r.seenHowTo === 'boolean') out.seenHowTo = r.seenHowTo;
   return out;
 }
 
