@@ -52,6 +52,29 @@ export interface GameState {
   holdUsed: boolean;
   /** The one rewarded-ad "continue" of this game has been spent. */
   revived: boolean;
+  /** How long (ms) the falling piece has been resting on something; it locks at LOCK_DELAY_MS. */
+  restMs: number;
+  /** How many times moving or rotating has restarted that timer for this piece. */
+  lockResets: number;
+  /** Consecutive pieces that cleared rows so far, minus one (-1 = the last piece cleared nothing). */
+  combo: number;
+  /** The last clear was a Tetris (4 rows), so another one earns the back-to-back bonus. */
+  backToBack: boolean;
+  /** Counts clears, so the screen can tell a new `lastClear` from the one it already showed. */
+  clearSeq: number;
+  /** The most recent line clear, for the pop-up text; null until there is one. */
+  lastClear: ClearInfo | null;
+}
+
+export interface ClearInfo {
+  id: number;
+  rows: number;
+  /** All points of this clear: rows, combo, back-to-back and perfect clear. */
+  points: number;
+  /** Consecutive clears before this one (0 = no combo). */
+  combo: number;
+  backToBack: boolean;
+  perfect: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +82,14 @@ export interface GameState {
 // ---------------------------------------------------------------------------
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000];
+const COMBO_BONUS = 50;
+const BACK_TO_BACK_FACTOR = 1.5;
+
+/** A piece may rest on the stack this long (ms) before it locks; moving or rotating restarts it. */
+export const LOCK_DELAY_MS = 500;
+/** ...but only this many times per piece, so a piece cannot be stalled forever. */
+export const MAX_LOCK_RESETS = 15;
 
 // Gravity interval (ms per row) for levels 1..15.
 const GRAVITY_TABLE = [800, 720, 630, 550, 470, 380, 300, 220, 140, 100, 80, 70, 60, 50, 40];
@@ -73,6 +104,11 @@ export function gravityFor(mode: GameMode, level: number): number {
 export function levelFor(mode: GameMode, lines: number): number {
   if (mode === 'zen') return 1;
   return Math.min(MARATHON_MAX_LEVEL, Math.floor(lines / 10) + 1);
+}
+
+/** The pieces coming up, the next one first (the preview shows three). */
+export function upcoming(state: Pick<GameState, 'next' | 'bag'>, count = 3): TetrominoType[] {
+  return [state.next, ...state.bag].slice(0, count);
 }
 
 export function createEmptyGrid(): Grid {
@@ -90,9 +126,12 @@ function shuffled<T>(items: readonly T[], rng: () => number): T[] {
   return a;
 }
 
-/** 7-bag randomizer: every piece appears once per bag of seven. */
+/**
+ * 7-bag randomizer: every piece appears once per bag of seven. A fresh bag is added before the
+ * old one runs out, so the next three pieces are always known and can be shown.
+ */
 function drawFromBag(bag: TetrominoType[]): { type: TetrominoType; bag: TetrominoType[] } {
-  const source = bag.length > 0 ? bag : shuffled(TETROMINO_TYPES, Math.random);
+  const source = bag.length >= 3 ? bag : [...bag, ...shuffled(TETROMINO_TYPES, Math.random)];
   const [type, ...rest] = source;
   return { type: type!, bag: rest };
 }
@@ -156,6 +195,12 @@ export function createGame(mode: GameMode): GameState {
     held: null,
     holdUsed: false,
     revived: false,
+    restMs: 0,
+    lockResets: 0,
+    combo: -1,
+    backToBack: false,
+    clearSeq: 0,
+    lastClear: null,
   };
 }
 
@@ -166,7 +211,7 @@ function spawnNext(state: GameState): GameState {
   const base: GameState = { ...state, next: draw.type, bag: draw.bag };
 
   if (!collides(base.grid, piece.type, piece.rotation, piece.row, piece.col)) {
-    return { ...base, piece, holdUsed: false };
+    return { ...base, piece, holdUsed: false, restMs: 0, lockResets: 0 };
   }
   return { ...base, piece: null, status: 'over' };
 }
@@ -193,7 +238,7 @@ function lockPiece(state: GameState, piece: ActivePiece, bonus: number): GameSta
   });
 
   const locked: GameState = { ...state, grid, piece: null, score: state.score + bonus };
-  if (fullRows.length === 0) return spawnNext(locked);
+  if (fullRows.length === 0) return spawnNext({ ...locked, combo: -1 });
   return { ...locked, clearingRows: fullRows };
 }
 
@@ -202,16 +247,32 @@ export function finishClear(state: GameState): GameState {
   if (state.clearingRows.length === 0) return state;
 
   const result = clearLines(state.grid);
-  const lines = state.lines + result.cleared;
-  const score = state.score + LINE_SCORES[result.cleared]! * state.level;
+  const cleared = result.cleared;
+  const lines = state.lines + cleared;
   const level = levelFor(state.mode, lines);
+
+  // Points: the rows (x level), +50 x level per combo step, x1.5 for a back-to-back Tetris, and a
+  // bonus when the board ends up completely empty.
+  const backToBack = cleared === 4 && state.backToBack;
+  const base = LINE_SCORES[cleared]! * state.level;
+  const rowPoints = backToBack ? Math.round(base * BACK_TO_BACK_FACTOR) : base;
+  const combo = state.combo + 1;
+  const comboPoints = combo > 0 ? COMBO_BONUS * combo * state.level : 0;
+  const perfect = result.grid.every((row) => row.every((cell) => cell === null));
+  const perfectPoints = perfect ? PERFECT_CLEAR_SCORES[cleared]! * state.level : 0;
+  const points = rowPoints + comboPoints + perfectPoints;
+
   const updated: GameState = {
     ...state,
     grid: result.grid,
     lines,
-    score,
+    score: state.score + points,
     level,
     clearingRows: [],
+    combo,
+    backToBack: cleared === 4,
+    clearSeq: state.clearSeq + 1,
+    lastClear: { id: state.clearSeq + 1, rows: cleared, points, combo, backToBack, perfect },
   };
 
   const sprintDone = state.mode === 'sprint' && lines >= SPRINT_TARGET_LINES;
@@ -221,11 +282,38 @@ export function finishClear(state: GameState): GameState {
   return spawnNext(updated);
 }
 
+/** Whether the falling piece is resting on the floor or the stack. */
+function isResting(state: GameState): boolean {
+  const p = state.piece;
+  return p !== null && collides(state.grid, p.type, p.rotation, p.row + 1, p.col);
+}
+
+/**
+ * A move or rotation of a resting piece restarts its lock timer (a limited number of times), so
+ * there is time to slide it under an overhang or turn it at the last moment.
+ */
+function afterAdjust(prev: GameState, next: GameState): GameState {
+  if (!isResting(prev) || prev.lockResets >= MAX_LOCK_RESETS) return next;
+  return { ...next, restMs: 0, lockResets: prev.lockResets + 1 };
+}
+
+/**
+ * Lock delay: while the piece rests on something, time adds up; when it reaches LOCK_DELAY_MS the
+ * piece locks. Called with the time passed since the last update.
+ */
+export function advanceRest(state: GameState, deltaMs: number): GameState {
+  if (state.status !== 'playing' || !state.piece || deltaMs <= 0) return state;
+  if (!isResting(state)) return state.restMs === 0 ? state : { ...state, restMs: 0 };
+  const restMs = state.restMs + deltaMs;
+  if (restMs >= LOCK_DELAY_MS) return lockPiece(state, state.piece, 0);
+  return { ...state, restMs };
+}
+
 export function movePiece(state: GameState, dCol: number): GameState {
   const p = state.piece;
   if (state.status !== 'playing' || !p) return state;
   if (collides(state.grid, p.type, p.rotation, p.row, p.col + dCol)) return state;
-  return { ...state, piece: { ...p, col: p.col + dCol } };
+  return afterAdjust(state, { ...state, piece: { ...p, col: p.col + dCol } });
 }
 
 /** Rotates with SRS wall kicks. dir: +1 = clockwise, -1 = counter-clockwise. */
@@ -237,20 +325,18 @@ export function rotatePiece(state: GameState, dir: 1 | -1): GameState {
     const row = p.row + dy;
     const col = p.col + dx;
     if (!collides(state.grid, p.type, to, row, col)) {
-      return { ...state, piece: { ...p, rotation: to, row, col } };
+      return afterAdjust(state, { ...state, piece: { ...p, rotation: to, row, col } });
     }
   }
   return state;
 }
 
-/** Gravity tick: move down one row, or lock if resting on something. */
+/** Gravity tick: move down one row. A resting piece stays: it locks through the lock delay. */
 export function stepDown(state: GameState): GameState {
   const p = state.piece;
   if (state.status !== 'playing' || !p) return state;
-  if (collides(state.grid, p.type, p.rotation, p.row + 1, p.col)) {
-    return lockPiece(state, p, 0);
-  }
-  return { ...state, piece: { ...p, row: p.row + 1 } };
+  if (collides(state.grid, p.type, p.rotation, p.row + 1, p.col)) return state;
+  return { ...state, piece: { ...p, row: p.row + 1 }, restMs: 0, lockResets: 0 };
 }
 
 /**
@@ -265,7 +351,13 @@ export function fastDropStep(state: GameState): { state: GameState; locked: bool
     return { state: lockPiece(state, p, 0), locked: true };
   }
   return {
-    state: { ...state, score: state.score + 1, piece: { ...p, row: p.row + 1 } },
+    state: {
+      ...state,
+      score: state.score + 1,
+      piece: { ...p, row: p.row + 1 },
+      restMs: 0,
+      lockResets: 0,
+    },
     locked: false,
   };
 }
@@ -289,7 +381,7 @@ export function holdPiece(state: GameState): GameState {
   }
   const swapped = spawnPiece(state.held);
   if (collides(state.grid, swapped.type, swapped.rotation, swapped.row, swapped.col)) return state;
-  return { ...state, piece: swapped, held: p.type, holdUsed: true };
+  return { ...state, piece: swapped, held: p.type, holdUsed: true, restMs: 0, lockResets: 0 };
 }
 
 /** How many rows, counted from the top, the rewarded-ad continue wipes. */
@@ -320,6 +412,9 @@ export function revive(state: GameState): GameState {
     revived: true,
     holdUsed: false,
     clearingRows: [],
+    restMs: 0,
+    lockResets: 0,
+    combo: -1,
   };
 }
 
@@ -373,7 +468,8 @@ export function useTetris(mode: GameMode, initial: GameState | null = null): Tet
   const commit = useCallback((transition: (s: GameState) => GameState) => {
     const now = Date.now();
     const current = stateRef.current;
-    const timed = addTime(current, now - lastTsRef.current);
+    const delta = now - lastTsRef.current;
+    const timed = advanceRest(addTime(current, delta), delta);
     lastTsRef.current = now;
     const next = transition(timed);
     if (next !== current) {

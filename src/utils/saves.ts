@@ -72,7 +72,7 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
   const piece = parsePiece(s.piece, grid);
   if (piece === undefined) return null;
   if (!isType(s.next)) return null;
-  if (!Array.isArray(s.bag) || s.bag.length > 6 || !s.bag.every(isType)) return null;
+  if (!Array.isArray(s.bag) || s.bag.length > 14 || !s.bag.every(isType)) return null;
   if (!isFiniteNumber(s.score) || s.score < 0) return null;
   if (!isFiniteNumber(s.lines) || s.lines < 0) return null;
   if (!isFiniteNumber(s.level) || s.level < 1) return null;
@@ -103,6 +103,13 @@ export function parseSavedGame(raw: unknown, mode: GameMode): GameState | null {
     held: isType(s.held) ? s.held : null,
     holdUsed: s.holdUsed === true,
     revived: s.revived === true,
+    // The lock timer and the combo start fresh after a restore.
+    restMs: 0,
+    lockResets: 0,
+    combo: -1,
+    backToBack: s.backToBack === true,
+    clearSeq: 0,
+    lastClear: null,
   };
   // Saved in the middle of a line-clear flash: finish it now.
   if (game.clearingRows.length > 0) game = finishClear(game);
