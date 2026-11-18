@@ -46,7 +46,7 @@ SIX MODES
 • Sprint: clear 40 lines as fast as you can.
 • Calm: no speed-ups, play at your own pace.
 • Ultra: score as much as you can in 2 minutes.
-• Party: three clearing pieces in a row make the next piece a bomb that clears a 3x3 area. Clear four rows to slow time down.
+• Party: two clearing pieces in a row make the next piece a bomb that clears a 3x3 area. Clear four rows to slow time down.
 • Dig: dig through rows of junk blocks; pick Easy, Normal or Hard and chase your best time.
 
 BUILT FOR ONE HAND
@@ -93,7 +93,7 @@ ALTI MOD
 • Sprint: 40 satırı en kısa sürede temizle.
 • Huzur: hızlanma yok, kendi hızında oyna.
 • Ultra: 2 dakikada olabildiğince çok puan topla.
-• Şenlik: üst üste 3 parçayla satır temizlersen sıradaki parça, 3×3 alanı silen bir bomba olur. 4 satır temizlersen zaman yavaşlar.
+• Şenlik: üst üste 2 parçayla satır temizlersen sıradaki parça, 3×3 alanı silen bir bomba olur. 4 satır temizlersen zaman yavaşlar.
 • Kazı: çöp bloklu satırları kaz; Kolay, Normal ya da Zor'u seç ve en iyi süreni kovala.
 
 TEK ELLE OYNAMAYA GÖRE

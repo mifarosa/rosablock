@@ -402,7 +402,7 @@ export function finishClear(state: GameState): GameState {
   const perfectPoints = perfect ? PERFECT_CLEAR_SCORES[cleared]! * state.level : 0;
   const points = rowPoints + comboPoints + perfectPoints;
 
-  // Party: every third piece in a row that clears lines brings a bomb; four rows slow time down.
+  // Party: every second piece in a row that clears lines brings a bomb; four rows slow time down.
   const awardBomb = state.mode === 'party' && (combo + 1) % PARTY_COMBO_FOR_BOMB === 0;
   const startSlow = state.mode === 'party' && cleared === 4;
 

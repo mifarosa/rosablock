@@ -23,7 +23,7 @@ export const DIG_DIFFICULTIES: readonly DigDifficulty[] = ['easy', 'normal', 'ha
 export const DIG_ROWS: Record<DigDifficulty, number> = { easy: 6, normal: 10, hard: 14 };
 export const DIG_LEVEL: Record<DigDifficulty, number> = { easy: 1, normal: 3, hard: 5 };
 
-/** Party: a power-up comes with every third piece in a row that clears lines. */
-export const PARTY_COMBO_FOR_BOMB = 3;
+/** Party: a bomb comes with every second piece in a row that clears lines. */
+export const PARTY_COMBO_FOR_BOMB = 2;
 /** Party: the slow-down after a four-row clear lasts this long. */
 export const PARTY_SLOW_MS = 10_000;

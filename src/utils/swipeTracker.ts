@@ -26,6 +26,12 @@ export function isFlickDown(dx: number, dy: number, vy: number): boolean {
   return dy >= FLICK_MIN_DY_PX && vy >= FLICK_MIN_VY && Math.abs(dx) <= dy * 0.5;
 }
 
+/**
+ * While a held-down drop is running, the first sideways step needs this many times the normal
+ * travel, so the small wobble of a pressed finger does not move the piece off its column.
+ */
+export const HOLD_FIRST_STEP_FACTOR = 1.6;
+
 export class SwipeTracker {
   cellSize: number;
   private readonly actions: SwipeActions;
@@ -33,6 +39,12 @@ export class SwipeTracker {
   private anchorX = 0;
   private moved = false;
   private holding = false;
+  /** Which way the touch went first: a mostly vertical touch never moves the piece sideways. */
+  private axis: 'horizontal' | 'vertical' | null = null;
+  /** Sideways steps made so far in this touch (right = +1, left = -1), so a flick can undo them. */
+  private net = 0;
+  /** A sideways step has been made since the hold began. */
+  private stepped = false;
 
   constructor(cellSize: number, actions: SwipeActions) {
     this.cellSize = cellSize;
@@ -44,6 +56,14 @@ export class SwipeTracker {
     this.anchorX = 0;
     this.moved = false;
     this.holding = false;
+    this.axis = null;
+    this.net = 0;
+    this.stepped = false;
+  }
+
+  /** Net sideways steps of this touch: the caller undoes them when the touch turns out to be a flick. */
+  netSteps(): number {
+    return this.net;
   }
 
   hasMoved(): boolean {
@@ -61,21 +81,33 @@ export class SwipeTracker {
     return true;
   }
 
-  /** dx/dy: finger travel since the touch started. Only horizontal travel moves the piece. */
+  /**
+   * dx/dy: finger travel since the touch started. Only horizontal travel moves the piece, and
+   * only when the touch started out mostly horizontal (or a hold is under way): a flick or a
+   * downward drag that drifts sideways leaves the piece in its column.
+   */
   move(dx: number, dy: number): void {
     if (!this.moved && (Math.abs(dx) > MOVE_SLOP_PX || Math.abs(dy) > MOVE_SLOP_PX)) {
       this.moved = true;
+      this.axis = Math.abs(dy) > Math.abs(dx) ? 'vertical' : 'horizontal';
     }
     if (!this.moved) return;
+    if (this.axis === 'vertical' && !this.holding) return;
 
     const stepX = this.cellSize * STEP_X_FACTOR;
-    while (dx - this.anchorX >= stepX) {
+    // A pressed finger wobbles: the first step during a hold needs a clearer movement.
+    const first = this.holding && !this.stepped ? stepX * HOLD_FIRST_STEP_FACTOR : stepX;
+    while (dx - this.anchorX >= (this.stepped ? stepX : first)) {
       this.actions.right();
-      this.anchorX += stepX;
+      this.anchorX += this.stepped ? stepX : first;
+      this.net += 1;
+      this.stepped = true;
     }
-    while (dx - this.anchorX <= -stepX) {
+    while (dx - this.anchorX <= -(this.stepped ? stepX : first)) {
       this.actions.left();
-      this.anchorX -= stepX;
+      this.anchorX -= this.stepped ? stepX : first;
+      this.net -= 1;
+      this.stepped = true;
     }
   }
 

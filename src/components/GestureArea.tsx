@@ -105,9 +105,18 @@ export default function GestureArea({
         const t = tracker.current!;
         const tap = t.end(Date.now());
         const flick = !tap && !t.isHolding() && isFlickDown(g.dx, g.dy, g.vy);
+        const drift = t.netSteps();
         reset();
-        if (tap) handlers.current.onTap();
-        else if (flick) handlers.current.onFlick();
+        if (tap) {
+          handlers.current.onTap();
+        } else if (flick) {
+          // The piece must fall where the shadow showed: undo any sideways steps this touch made.
+          for (let i = 0; i < Math.abs(drift); i++) {
+            if (drift > 0) handlers.current.onLeft();
+            else handlers.current.onRight();
+          }
+          handlers.current.onFlick();
+        }
       },
       onPanResponderTerminate: () => reset(),
     }),
