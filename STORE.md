@@ -20,8 +20,8 @@ Limits are Apple's; every text below was checked against them.
 | Languages | English (primary), Turkish |
 | Version / What's New | 1.0.0 / "First release." (TR: "İlk sürüm.") |
 
-The privacy and support pages are in `docs/` and are published by `.github/workflows/pages.yml`
-(see section 6). The URLs must open before you submit.
+The privacy and support pages are in `docs/` and are published by the personal site
+(section 6). The URLs must open before you submit.
 
 ## 2. Text: English (primary)
 
@@ -148,13 +148,19 @@ changes over time) before you publish:
 > the previous ad. In the EEA/UK a Google consent form (UMP) is shown first. The settings screen
 > links to the privacy policy and a support page.
 
-## 6. One-time setup of the site (privacy and support pages)
+## 6. The privacy and support pages (the site)
 
-1. GitHub: repository **Settings -> Pages -> Source: GitHub Actions**.
-2. Actions -> **Publish site** -> Run workflow (it also runs when `docs/` changes).
-3. Open https://mifarosa.com/rosablock/privacy.html and .../support.html. Wasorty uses the same
-   Pages setup, so the address follows the same rule. If your Pages address differs, change
-   `PRIVACY_URL` and `SUPPORT_URL` in `src/constants/links.ts` and the URLs in App Store Connect.
+The pages are served by the personal site (repository `mifarosa/mifarosa.github.io`, Astro, deployed
+to mifarosa.com by its own workflow) from `public/rosablock/`:
+
+- https://mifarosa.com/rosablock/privacy.html
+- https://mifarosa.com/rosablock/support.html
+- https://mifarosa.com/rosablock/ (small landing page)
+
+`docs/` in this repository is the source of those files. After changing them, copy
+`docs/privacy.html`, `docs/support.html` and `docs/index.html` into `public/rosablock/` of the site
+repository and merge. The addresses are in `src/constants/links.ts` (`PRIVACY_URL`, `SUPPORT_URL`).
+Open both URLs in a browser before you submit.
 
 ## 7. Screenshots
 
@@ -170,7 +176,7 @@ one set of the largest size and scales it for the others:
 
 ## 8. Build and submit
 
-1. Make sure the Pages site is live (section 6).
+1. Make sure the privacy and support pages are live (section 6).
 2. AdMob: the Privacy & messaging (GDPR) message exists and is assigned to Rosablock;
    `app-ads.txt` is on the developer website; the app is linked to its App Store page once live.
 3. Actions -> **iOS build** -> Run workflow -> *profile* **store**, tick *submit*. The `store`

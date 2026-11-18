@@ -57,7 +57,8 @@ Bump `expo.version` for each release; the build number is automatic.
 
 ## Privacy policy
 
-The page text is `docs/privacy.html` (English and Turkish) and `docs/support.html`; the workflow
-`.github/workflows/pages.yml` publishes `docs/` with GitHub Pages (Settings -> Pages -> Source: GitHub
-Actions, once). The addresses are in `src/constants/links.ts`; use the same URLs in App Store Connect.
-The app links to both from Settings.
+The page text is `docs/privacy.html` (English and Turkish) and `docs/support.html`. They are served
+by the personal site: copy `docs/privacy.html`, `docs/support.html` and `docs/index.html` into
+`public/rosablock/` of the `mifarosa/mifarosa.github.io` repository and merge (its own workflow
+deploys to mifarosa.com). The addresses are in `src/constants/links.ts`; use the same URLs in App
+Store Connect. The app links to both from Settings. See STORE.md for the whole submission kit.
