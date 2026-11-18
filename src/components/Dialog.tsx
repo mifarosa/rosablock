@@ -3,16 +3,33 @@ import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useApp } from '../app/AppContext';
 import type { ThemeColors } from '../constants/colors';
 
-/** A themed modal card over a dimmed backdrop; absolutely fills its parent. */
-export function Dialog({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * A themed modal card over a dimmed backdrop; absolutely fills its parent. With `onDismiss`, a tap
+ * on the backdrop (anywhere outside the card) closes it, like its cancel button would.
+ */
+export function Dialog({
+  title,
+  children,
+  onDismiss,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onDismiss?: () => void;
+}) {
   const styles = useStyles();
   return (
-    <View style={styles.overlay}>
-      <View style={styles.dialog}>
+    <Pressable
+      style={styles.overlay}
+      onPress={onDismiss}
+      disabled={!onDismiss}
+      accessible={false}
+    >
+      {/* The card swallows taps, so touching it does not count as touching the backdrop. */}
+      <Pressable style={styles.dialog} onPress={() => {}} accessible={false}>
         <Text style={styles.title}>{title}</Text>
         {children}
-      </View>
-    </View>
+      </Pressable>
+    </Pressable>
   );
 }
 

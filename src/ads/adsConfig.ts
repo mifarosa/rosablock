@@ -1,9 +1,10 @@
 /**
- * Whether the app shows real ads. While it is false (testing, TestFlight) it shows Google's test
- * ads, which are labelled as such and cost the account nothing; never tap real ads yourself.
- * Set it to true, with the real ids below, for the build that goes to the App Store.
+ * Whether the app shows real ads. Only the `store` EAS build profile (the one meant for the App
+ * Store) turns it on, through EXPO_PUBLIC_ADS_LIVE; every other build (development, preview, the
+ * TestFlight `production` profile) shows Google's labelled test ads, which cost the account
+ * nothing. Never tap real ads yourself.
  */
-export const ADS_LIVE = false;
+export const ADS_LIVE = process.env.EXPO_PUBLIC_ADS_LIVE === 'true';
 
 /**
  * The rewarded ad unit of Rosablock in AdMob (not a secret: it is in every copy of the app).

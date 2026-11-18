@@ -17,6 +17,12 @@
     "production": {
       "autoIncrement": true,
       "ios": {}
+    },
+    "store": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_ADS_LIVE": "true"
+      }
     }
   },
   "submit": {

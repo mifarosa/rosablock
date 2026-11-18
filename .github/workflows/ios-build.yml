@@ -10,6 +10,13 @@ name: iOS build
 on:
   workflow_dispatch:
     inputs:
+      profile:
+        description: "production = TestFlight build with test ads; store = the App Store build with real ads"
+        type: choice
+        options:
+          - production
+          - store
+        default: production
       submit:
         description: Upload to TestFlight afterwards (needs an App Store Connect API key in EAS)
         type: boolean
@@ -42,7 +49,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - name: Build
-        run: eas build --platform ios --profile production --local --non-interactive --output "$RUNNER_TEMP/rosablock.ipa"
+        run: eas build --platform ios --profile ${{ inputs.profile }} --local --non-interactive --output "$RUNNER_TEMP/rosablock.ipa"
       # Kept for a day, so a failed upload does not cost the build; submit it later by hand with
       # `eas submit --platform ios --path rosablock.ipa`.
       - uses: actions/upload-artifact@v4

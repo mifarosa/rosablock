@@ -38,27 +38,26 @@ Bump `expo.version` for each release; the build number is automatic.
 
 - AdMob app id (iOS): in `app.json` under the `react-native-google-mobile-ads` plugin. The Android
   id there is still Google's test id (there is no Android app in AdMob yet).
-- Rewarded ad unit: `REWARDED_UNIT_ID` in `src/ads/adsConfig.ts`.
-- **`ADS_LIVE` is `false`**: builds show Google's labelled test ads, which is what TestFlight and
-  testers should see (tapping or farming real ads can get the AdMob account limited). Set it to
-  `true` only for the build that goes to the App Store.
-- Interstitial (between games): `INTERSTITIAL_UNIT_ID` in `src/ads/adsConfig.ts` (create an
-  Interstitial unit in AdMob). Shown when a NEW game starts ("Play again", a fresh mode from the
+- Ad units: `REWARDED_UNIT_ID` and `INTERSTITIAL_UNIT_ID` in `src/ads/adsConfig.ts`.
+- **Real vs test ads is decided by the build profile**, not by editing code: only the **`store`**
+  profile in `eas.json` sets `EXPO_PUBLIC_ADS_LIVE=true`. Development, preview and the `production`
+  (TestFlight) profile show Google's labelled test ads. Pick the profile in Actions -> iOS build.
+  Never tap real ads yourself (the account can be limited).
+- Interstitial (between games): shown when a NEW game starts ("Play again", a fresh mode from the
   menu), never for a continued game, a pause-restart or leaving. Pacing is in `src/ads/adPacing.ts`:
   the first game of a session has none, then every 2nd new game, at least 2.5 minutes after any ad.
 - The rewarded ad is offered once per game, only after game over, and only when the player taps
-  "Watch an ad to continue" (never automatically). It is not offered in Sprint.
+  "Watch an ad to continue" (never automatically). Not in Sprint or Dig.
 - Consent: `startAds` shows Google's UMP form where required and only requests ads when allowed.
-  Create the message in AdMob -> Privacy & messaging (GDPR) and, for iOS, turn on the IDFA
-  explainer only if you want personalized ads (requests are non-personalized today). Players in
-  regions that require it get an "Ad privacy options" button in Settings.
+  Create the message in AdMob -> Privacy & messaging (GDPR). Players in regions that require it get
+  an "Ad privacy options" button in Settings.
 - Before the App Store review: put `google.com, pub-1672861293331033, DIRECT, f08c47fec0942fa0` in
-  `app-ads.txt` on the developer website, link the app to its App Store page in AdMob, and fill
-  in App Store Connect -> App Privacy (advertising data, device ID, usage data).
+  `app-ads.txt` on the developer website, link the app to its App Store page in AdMob, and fill in
+  App Store Connect -> App Privacy. **See STORE.md for the whole submission kit.**
 
 ## Privacy policy
 
-The page text is `docs/privacy-policy.html` (English and Turkish). Upload it to the address in
-`src/constants/links.ts` (`PRIVACY_URL`, now `https://mifarosa.com/rosablock/privacy.html`) and use the
-same URL in App Store Connect -> App Information -> Privacy Policy URL. The app links to it from
-Settings.
+The page text is `docs/privacy.html` (English and Turkish) and `docs/support.html`; the workflow
+`.github/workflows/pages.yml` publishes `docs/` with GitHub Pages (Settings -> Pages -> Source: GitHub
+Actions, once). The addresses are in `src/constants/links.ts`; use the same URLs in App Store Connect.
+The app links to both from Settings.

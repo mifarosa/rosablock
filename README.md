@@ -1,6 +1,6 @@
 # Rosablock
 
-A calm, nostalgic Tetris for iOS and Android, built with React Native (Expo). Soft, muted colors that are easy on the eyes, synthesized "sweet" sounds, and a game that works fully offline.
+A calm, nostalgic falling-block puzzle for iOS and Android, built with React Native (Expo). Soft, muted colors that are easy on the eyes, synthesized "sweet" sounds, and a game that works fully offline.
 
 [Türkçe](README.tr.md)
 
@@ -16,8 +16,8 @@ A calm, nostalgic Tetris for iOS and Android, built with React Native (Expo). So
 - **Two ways to play**
   - **Gestures** (full screen): tap to rotate, drag sideways to move, hold to drop, speeding up the longer you hold, flick down to hard drop.
   - **Buttons**: a compact 2x2 pad next to a status box, built for one thumb; a small ⇄ button swaps the sides.
-- **Real Tetris rules**: SRS rotation with wall kicks, 7-bag randomizer, the next three pieces shown, ghost piece, hold piece (once per piece), level-based gravity and a lock delay (half a second to slide and rotate a landed piece).
-- **Scoring**: rows x level, combos, back-to-back Tetrises (x1.5) and a perfect clear bonus, with pop-up text for each.
+- **Classic falling-block rules**: SRS rotation with wall kicks, 7-bag randomizer, the next three pieces shown, ghost piece, hold piece (once per piece), level-based gravity and a lock delay (half a second to slide and rotate a landed piece).
+- **Scoring**: rows x level, combos, back-to-back four-row clears (x1.5) and a perfect clear bonus, with pop-up text for each.
 - **Feel**: cleared rows flash before they collapse, the board shakes on a 3 or 4 line clear, haptics scale with the number of rows, and a haze fills the board when the game ends.
 - **Autosave and resume**: every mode keeps its own saved game; picking a mode with a saved game asks "Continue / Start over", and a continued game starts with a 3-2-1 countdown.
 - **Best scores** per mode (Sprint keeps the best time).
@@ -76,4 +76,4 @@ The engine in `src/hooks/useTetris.ts` is plain functions on an immutable `GameS
 
 Builds run on GitHub (`.github/workflows/ios-build.yml`) with EAS. See [RELEASE.md](RELEASE.md) for setup, TestFlight and the ads checklist.
 
-`ADS_LIVE` in `src/ads/adsConfig.ts` is `false` so test builds show Google's test ads; set it to `true` only for the App Store build.
+Real ads are on only in the `store` EAS build profile (it sets `EXPO_PUBLIC_ADS_LIVE`); every other build shows Google's test ads. The App Store submission kit (texts, privacy answers, checklist) is in [STORE.md](STORE.md).

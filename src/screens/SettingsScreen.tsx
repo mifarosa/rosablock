@@ -6,7 +6,7 @@ import { useApp } from '../app/AppContext';
 import Segment from '../components/Segment';
 import ThemeBackground from '../components/ThemeBackground';
 import { THEMES, THEME_IDS, type ThemeColors } from '../constants/colors';
-import { PRIVACY_URL } from '../constants/links';
+import { PRIVACY_URL, SUPPORT_URL } from '../constants/links';
 import { LANGUAGES, type StringKey } from '../i18n/strings';
 
 interface SettingsScreenProps {
@@ -136,6 +136,13 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
         >
           <Text style={styles.linkText}>{t('settings.privacyButton')}</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => void Linking.openURL(SUPPORT_URL).catch(() => {})}
+          style={[styles.linkButton, styles.linkSpacing]}
+        >
+          <Text style={styles.linkText}>{t('settings.supportButton')}</Text>
+        </Pressable>
 
         {showAdPrivacy && (
           <>
@@ -179,6 +186,7 @@ const makeStyles = (c: ThemeColors) =>
       paddingVertical: 14,
       alignItems: 'center',
     },
+    linkSpacing: { marginTop: 8 },
     linkText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
     themes: { flexDirection: 'row', gap: 10 },
     themeCard: {

@@ -68,6 +68,7 @@ const tr = {
   'settings.colorblindHint': 'Parçalar birbirinden kolay ayırt edilen renklerle çizilir.',
   'settings.privacy': 'GİZLİLİK',
   'settings.privacyButton': 'Gizlilik politikası',
+  'settings.supportButton': 'Destek',
 
   'game.sound': 'Ses efektleri',
   'game.music': 'Müzik',
@@ -76,7 +77,7 @@ const tr = {
 
   'toast.double': 'ÇİFT',
   'toast.triple': 'ÜÇLÜ',
-  'toast.tetris': 'TETRİS!',
+  'toast.tetris': '4 SATIR!',
   'toast.combo': 'KOMBO ×{n}',
   'toast.backToBack': 'ARKA ARKAYA',
   'toast.perfect': 'MÜKEMMEL TEMİZLİK!',
@@ -103,7 +104,7 @@ const tr = {
     'TUT kutusuna dokun: düşen parça kenara geçer. Bir sonraki sefer tuttuğun parçayla yer değiştirir. Her parça için bir kez.',
   'howto.score.title': 'Puan',
   'howto.score.text':
-    '1 satır 100, 2 satır 300, 3 satır 500, 4 satır (Tetris) 800 puan, seviye ile çarpılır. Art arda satır temizlersen kombo, arka arkaya Tetris ×1,5, tahtayı bomboş bırakırsan büyük bonus gelir.',
+    '1 satır 100, 2 satır 300, 3 satır 500, 4 satır 800 puan, seviye ile çarpılır. Art arda satır temizlersen kombo, arka arkaya 4 satır ×1,5, tahtayı bomboş bırakırsan büyük bonus gelir.',
   'howto.lock.title': 'Son an',
   'howto.lock.text':
     'Parça bir yere değince hemen kilitlenmez: yarım saniye içinde yana kaydırıp döndürebilirsin.',
@@ -226,6 +227,7 @@ const en: Record<StringKey, string> = {
   'settings.colorblindHint': 'Pieces use colors that are easy to tell apart.',
   'settings.privacy': 'PRIVACY',
   'settings.privacyButton': 'Privacy policy',
+  'settings.supportButton': 'Support',
 
   'game.sound': 'Sound effects',
   'game.music': 'Music',
@@ -234,7 +236,7 @@ const en: Record<StringKey, string> = {
 
   'toast.double': 'DOUBLE',
   'toast.triple': 'TRIPLE',
-  'toast.tetris': 'TETRIS!',
+  'toast.tetris': '4 LINES!',
   'toast.combo': 'COMBO ×{n}',
   'toast.backToBack': 'BACK-TO-BACK',
   'toast.perfect': 'PERFECT CLEAR!',
@@ -261,7 +263,7 @@ const en: Record<StringKey, string> = {
     'Tap the HOLD box to set the falling piece aside. Next time it swaps with the piece you held. Once per piece.',
   'howto.score.title': 'Score',
   'howto.score.text':
-    '1 row 100, 2 rows 300, 3 rows 500, 4 rows (Tetris) 800 points, times your level. Clearing rows with consecutive pieces gives a combo, back-to-back Tetrises score x1.5, and emptying the whole board gives a big bonus.',
+    '1 row 100, 2 rows 300, 3 rows 500, 4 rows 800 points, times your level. Clearing rows with consecutive pieces gives a combo, back-to-back four-row clears score x1.5, and emptying the whole board gives a big bonus.',
   'howto.lock.title': 'Last moment',
   'howto.lock.text':
     'A piece does not lock the moment it lands: you have half a second to slide and rotate it.',

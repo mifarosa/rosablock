@@ -134,7 +134,7 @@ function Root() {
         />
       )}
       {screen.name === 'home' && pickingDifficulty && (
-        <Dialog title={t('dig.pick')}>
+        <Dialog title={t('dig.pick')} onDismiss={() => setPickingDifficulty(false)}>
           <DialogText>{t('dig.pickText')}</DialogText>
           {DIG_DIFFICULTIES.map((level) => (
             <DialogButton
@@ -151,7 +151,7 @@ function Root() {
         </Dialog>
       )}
       {screen.name === 'home' && pendingMode !== null && pendingSaved && (
-        <Dialog title={t(`mode.${pendingMode}.title` as StringKey)}>
+        <Dialog title={t(`mode.${pendingMode}.title` as StringKey)} onDismiss={() => setPendingMode(null)}>
           <DialogText>
             {t('home.resumeText', { score: pendingSaved.score, lines: pendingSaved.lines })}
           </DialogText>

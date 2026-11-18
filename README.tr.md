@@ -1,6 +1,6 @@
 # Rosablock
 
-React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir Tetris. Göz yormayan yumuşak renkler, "tatlı" sentezlenmiş sesler ve tamamen çevrimdışı çalışan bir oyun.
+React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir blok bulmaca. Göz yormayan yumuşak renkler, "tatlı" sentezlenmiş sesler ve tamamen çevrimdışı çalışan bir oyun.
 
 [English](README.md)
 
@@ -16,8 +16,8 @@ React Native (Expo) ile yapılmış, iOS ve Android için sakin, nostaljik bir T
 - **İki oynama biçimi**
   - **Tuşsuz** (tam ekran): dokun = döndür, yana kaydır = hareket, basılı tut = hızlanarak in, aşağı fiske = çat diye indir.
   - **Tuşlar**: durum kutusunun yanında kompakt 2x2 tuş kümesi, tek başparmakla oynamak için; küçük ⇄ tuşu tarafları değiştirir.
-- **Gerçek Tetris kuralları**: duvar itmeli SRS döndürme, 7'li torba, sıradaki üç parçanın gösterilmesi, gölge parça, parça tutma (parça başına bir kez), seviyeye göre yerçekimi ve kilit gecikmesi (yere değen parçayı kaydırıp döndürmek için yarım saniye).
-- **Puanlama**: satır x seviye, kombo, arka arkaya Tetris (x1,5) ve mükemmel temizlik bonusu; her biri için ekranda yazı çıkar.
+- **Klasik düşen blok kuralları**: duvar itmeli SRS döndürme, 7'li torba, sıradaki üç parçanın gösterilmesi, gölge parça, parça tutma (parça başına bir kez), seviyeye göre yerçekimi ve kilit gecikmesi (yere değen parçayı kaydırıp döndürmek için yarım saniye).
+- **Puanlama**: satır x seviye, kombo, arka arkaya 4 satır (x1,5) ve mükemmel temizlik bonusu; her biri için ekranda yazı çıkar.
 - **His**: dolan satırlar çökmeden önce parlar, 3-4 satırda tahta sarsılır, titreşim satır sayısına göre güçlenir, oyun bitince tahtayı bir sis kaplar.
 - **Otomatik kayıt ve devam**: her modun kendi kaydı var; kayıtlı modu seçince "Devam Et / Yeni Başla" sorulur, devam edilen oyun 3-2-1 geri sayımla başlar.
 - Her mod için **en iyiler** (Sprint'te en iyi süre).
@@ -76,4 +76,4 @@ scripts/makeSounds.mjs   sesleri ve müziği sentezler
 
 Build'ler GitHub üzerinde (`.github/workflows/ios-build.yml`) EAS ile alınır. Kurulum, TestFlight ve reklam kontrol listesi için [RELEASE.md](RELEASE.md) dosyasına bakın.
 
-`src/ads/adsConfig.ts` içindeki `ADS_LIVE` `false` olduğundan test build'leri Google'ın test reklamlarını gösterir; yalnızca App Store build'i için `true` yapın.
+Gerçek reklamlar yalnızca `store` EAS build profilinde açıktır (`EXPO_PUBLIC_ADS_LIVE` ayarlar); diğer tüm build'ler Google'ın test reklamlarını gösterir. App Store gönderim paketi (metinler, gizlilik cevapları, kontrol listesi) [STORE.md](STORE.md) içindedir.
