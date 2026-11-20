@@ -138,6 +138,13 @@ changes over time) before you publish:
 ## 5. App Review information
 
 - **Sign-in**: none required (there are no accounts).
+- **Questions asked while submitting** (answers for this app):
+  - *Content rights* ("does your app contain, show or access third-party content?"): **No**.
+  - *Advertising Identifier (IDFA)*, if the form asks: **Yes, to serve advertisements within the app**
+    (Google AdMob uses it). The app shows no App Tracking Transparency prompt and requests
+    non-personalized ads only. Do not tick "attribute installs" or "attribute actions".
+  - *Export compliance*: the app already declares that it uses no non-exempt encryption.
+  - *Release*: choose **Manually release** so you can check everything once approved.
 - **Contact**: your name, phone and e-mail (only Apple sees them).
 - **Notes for the reviewer** (paste):
 
@@ -188,7 +195,8 @@ one set of the largest size and scales it for the others:
 
 ## 9. Pre-flight checklist
 
-- [ ] Privacy and support pages open from the URLs above
+- [ ] Privacy and support pages open from the URLs above (they are live: the site deploy passed)
+- [ ] https://mifarosa.com/app-ads.txt opens (site PR merged)
 - [ ] AdMob consent message created; `app-ads.txt` published
 - [ ] App Privacy answers saved; age rating questionnaire done (4+)
 - [ ] Screenshots, subtitle, promo text, keywords, description in both languages
